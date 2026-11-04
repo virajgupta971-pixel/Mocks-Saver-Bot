@@ -26,10 +26,10 @@ async def start(event):
     """Handle /start command"""
     await event.reply(
         "Welcome to the Mock Extractor Bot!\n\n"
-        "Send /fetch exam testid for oliveboard\n\n"
-        "Example: /fetch sbipo 1\n"
-        "Example: /fetch rrbpomain 1\n"
-        "Example: /fetch rrbposectional 1\n\n"
+        "Send `/fetch exam testid` for oliveboard\n\n"
+        "Example: /fetch rrbpo 1\n"
+        "Example: /fetch rrbclerk 1\n"
+        "Example: /fetch rrbpomain 1\n\n"
         "Powered by Team SPY"
     )
 
@@ -55,7 +55,7 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# Comprehensive Category Slugs including RRB Prelims, Mains, Sectionals & Banking Exams
+# Comprehensive Category Slugs (Prelims uses 'ibpsrrbscp' for RRB, Mains and others have specific slugs)
 BASE_URIS = {
     # SSC & Railway
     "cgl1":           "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
@@ -68,29 +68,25 @@ BASE_URIS = {
     "rrbalp2":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
     "rrbgrpd":        "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
     
-    # RRB PO & Clerk (Prelims, Mains, Sectionals)
-    "rrbpo":          "https://u1.oliveboard.in/exams/tests/?c=rrbpo&testid={test_id}",
+    # RRB PO & Clerk (Prelims & Mains / Sectionals)
+    "rrbpo":          "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
+    "rrbclerk":       "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbpomain":      "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
-    "rrbclerk":       "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
     "rrbclerkmain":   "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&testid={test_id}",
     "rrbposectional": "https://u1.oliveboard.in/exams/tests/?c=rrbposectional&testid={test_id}",
     "rrbclerksectional": "https://u1.oliveboard.in/exams/tests/?c=rrbclerksectional&testid={test_id}",
 
-    # IBPS PO & Clerk (Prelims, Mains, Sectionals)
+    # IBPS PO & Clerk
     "ibpspo":         "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
     "ibpspomain":     "https://u1.oliveboard.in/exams/tests/?c=ibpspomain&testid={test_id}",
     "ibpsclerk":      "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
     "ibpsclerkmain":  "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
-    "ibpsposectional": "https://u1.oliveboard.in/exams/tests/?c=ibpsposectional&testid={test_id}",
-    "ibpsclerksectional": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerksectional&testid={test_id}",
 
-    # SBI PO & Clerk (Prelims, Mains, Sectionals)
+    # SBI PO & Clerk
     "sbipo":          "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
     "sbipomain":      "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
     "sbiclerk":       "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
     "sbiclerkmain":   "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
-    "sbiposectional": "https://u1.oliveboard.in/exams/tests/?c=sbiposectional&testid={test_id}",
-    "sbiclerksectional": "https://u1.oliveboard.in/exams/tests/?c=sbiclerksectional&testid={test_id}",
 }
 
 
