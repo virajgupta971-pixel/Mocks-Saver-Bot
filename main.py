@@ -1,4 +1,3 @@
-
 # Copyright github.com/devgaganin
 # no part of this code/edits is allowed to use for commercial / sale purposes
 
@@ -16,47 +15,24 @@ API_HASH = os.getenv("API_HASH", "your_api_hash")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")  
 COOKIES = os.getenv("COOKIES", "your_cookies_here")   
 
-# ─────────────────────────────────────────────
-# Initialize the Telethon client
-# ─────────────────────────────────────────────
 bot = TelegramClient("olive_bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
-# User states track karne ke liye dictionary (user_id -> selected_exam)
 user_states = {}
 
-
-@bot.on(events.NewMessage(pattern="/start"))
-async def start(event):
-    """Handle /start command"""
-    await event.reply(
-        "Welcome to the Mock Extractor Bot!\n\n"
-        "Sirf **/fetch** type karein aur saare exams ki list buttons ke roop mein aa jayegi!\n\n"
-        "Powered by Team SPY"
-    )
-
-
-# ─────────────────────────────────────────────
-# OLIVEBOARD — headers
-# ─────────────────────────────────────────────
 HEADERS = {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br, zstd",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Encoding": "gzip, deflate, br",
     "Accept-Language": "en-US,en;q=0.9",
     "Connection": "keep-alive",
     "Cookie": COOKIES,
     "Host": "u1.oliveboard.in",
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
+    "Sec-Fetch-Site": "same-origin",
     "Upgrade-Insecure-Requests": "1",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
-    "sec-ch-ua": '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"Windows"',
 }
 
-# Exams aur unke Oliveboard query parameters (`c=...`)
 BASE_URIS = {
     # IBPS Clerk
     "ibpsclerk_pre_25":  "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
@@ -76,21 +52,13 @@ BASE_URIS = {
     "rrbclerk_pre_26":  "https://u1.oliveboard.in/exams/tests/?c=rrbclerk26&testid={test_id}",
     "rrbclerk_main_26": "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain26&testid={test_id}",
 
-    # SBI Clerk & PO Mains 2025/2026
+    # SBI Clerk & PO
     "sbiclerk_main_25": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
     "sbiclerk_main_26": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain26&testid={test_id}",
     "sbipo_main_25":    "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
     "sbipo_main_26":    "https://u1.oliveboard.in/exams/tests/?c=sbipomain26&testid={test_id}",
-    
-    # SSC & Railway basics
-    "cgl1": "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
-    "ntpc1": "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
 }
 
-
-# ─────────────────────────────────────────────
-# Step 1: /fetch command par buttons dikhana
-# ─────────────────────────────────────────────
 @bot.on(events.NewMessage(pattern=r"^/fetch$"))
 async def fetch_menu(event):
     buttons = [
@@ -103,38 +71,21 @@ async def fetch_menu(event):
         [Button.inline("💳 SBI Clerk Mains '25", data="sbiclerk_main_25"), Button.inline("💳 SBI Clerk Mains '26", data="sbiclerk_main_26")],
         [Button.inline("💰 SBI PO Mains '25", data="sbipo_main_25"), Button.inline("💰 SBI PO Mains '26", data="sbipo_main_26")],
     ]
-    await event.respond("📂 **Kripya niche diye gaye list me se apna Exam select karein:**", buttons=buttons)
+    await event.respond("📂 **Select Exam:**", buttons=buttons)
 
-
-# ─────────────────────────────────────────────
-# Step 2: Button click hone par exam save karna aur test ID maangna
-# ─────────────────────────────────────────────
 @bot.on(events.CallbackQuery)
 async def button_click(event):
     data = event.data.decode("utf-8")
     if data in BASE_URIS:
         user_states[event.sender_id] = data
-        await event.edit(
-            f"✅ Aapne select kiya: **{data.upper()}**\n\n"
-            "💬 Ab kripya apna **Test ID (number)** type karke bhej dein (jaise: `2`):"
-        )
+        await event.edit(f"✅ Selected: **{data.upper()}**\n\n💬 Send Test ID (number):")
 
-
-# ─────────────────────────────────────────────
-# Step 3: Test ID milne par process start karna
-# ─────────────────────────────────────────────
 @bot.on(events.NewMessage)
 async def handle_test_id(event):
     user_id = event.sender_id
     if user_id in user_states:
         text = event.text.strip()
-        
-        # Agar user ne koi dusri command bhej di toh state cancel kar do
-        if text.startswith("/"):
-            return
-
-        if not text.isdigit():
-            await event.reply("⚠️ Kripya valid Test ID (sirf numbers) bhejein!")
+        if text.startswith("/") or not text.isdigit():
             return
 
         exam = user_states.pop(user_id)
@@ -146,49 +97,38 @@ async def handle_test_id(event):
 
         try:
             prog = await event.respond("⏳ Extracting Questions…")
+            
+            # Session requests Object (Persistent Session Cookie Handling)
+            session = requests.Session()
+            session.headers.update(HEADERS)
 
-            # ── 1. Download question paper ─────────────────────
-            response = requests.get(url, headers=HEADERS, timeout=30)
+            response = session.get(url, timeout=30)
             response.raise_for_status()
+
+            if "login" in response.text.lower()[:2000]:
+                await prog.edit("⚠️ Invalid/Expired Cookies! Update COOKIES in Environment Variables.")
+                return
 
             modified_html = modify_html(response.text, url)
             with open(file_name, "w", encoding="utf-8") as file:
                 file.write(modified_html)
 
             await prog.edit("📤 Uploading Test Papers…")
-            await event.respond(
-                f"📕 Exam: {exam}\n"
-                f"🆔 Test ID: {test_id}\n"
-                f"📂 Type: Question Paper\n\n"
-                "Powered by Team SPY",
-                file=file_name,
-            )
+            await event.respond(f"📕 Exam: {exam}\n🆔 Test ID: {test_id}\n📂 Question Paper", file=file_name)
 
-            # ── 2. Submit the test ────────────────────────────
-            await prog.edit("🔄 Auto Submitting the test…")
-            ok = submit_test(url, test_id, exam)
+            # ── Auto Submit Test ──
+            await prog.edit("🔄 Auto Submitting test…")
+            ok = submit_test(session, url, test_id, exam)
 
-            if not ok:
-                await prog.edit(
-                    "⚠️ Test submission failed (invalid/expired cookies or already submitted). "
-                    "Skipping solution fetch."
-                )
-                return
+            # ── Solution Page Request ──
+            sol_url = f"https://u1.oliveboard.in/exams/solution/index3.php?c={exam.split('_')[0]}&testid={test_id}"
+            
+            await prog.edit("🔎 Fetching Solution…")
+            sol_response = session.get(sol_url, timeout=30)
+            sol_html = sol_response.text
 
-            await prog.edit("✅ Test Submitted Successfully…")
-
-            # ── 3. Fetch solution ────────────────────────────
-            sol_url = url.replace(
-                "https://u1.oliveboard.in/exams/tests/",
-                "https://u1.oliveboard.in/exams/solution/index3.php",
-            )
-            print("Solution URL:", sol_url)
-
-            await prog.edit("🔎 Trying to fetch the solution…")
-            sol_html = fetch_solution(sol_url)
-
-            if not sol_html or "login" in sol_html.lower()[:2000] and "solution" not in sol_html.lower():
-                await prog.edit("⚠️ Could not fetch solution (login page returned).")
+            if not sol_html or len(sol_html) < 1000:
+                await prog.edit("⚠️ Test solution is blank. Test submit nahi ho paaya ya account unlocked nahi hai.")
                 return
 
             mod_html = mody_html(sol_html, sol_url)
@@ -196,117 +136,63 @@ async def handle_test_id(event):
                 file.write(mod_html)
 
             await prog.edit("📤 Uploading Solution…")
-            await event.respond(
-                f"📕 Exam: {exam}\n"
-                f"🆔 Test ID: {test_id}\n"
-                f"📂 Type: Solution\n\n"
-                "Powered by Team SPY",
-                file=file_sol_name,
-            )
+            await event.respond(f"📕 Exam: {exam}\n🆔 Test ID: {test_id}\n📂 Solution Paper", file=file_sol_name)
             await prog.delete()
 
-        except requests.exceptions.RequestException as e:
-            await event.respond(f"❌ Network error: {e}")
         except Exception as e:
-            await event.respond(f"❌ Unexpected error: {e}")
+            await event.respond(f"❌ Error: {e}")
         finally:
             for f in (file_name, file_sol_name):
-                try:
-                    if os.path.exists(f):
+                if os.path.exists(f):
+                    try:
                         os.remove(f)
-                except OSError:
-                    pass
+                    except OSError:
+                        pass
 
-
-# ─────────────────────────────────────────────
-# Submit the test function
-# ─────────────────────────────────────────────
-def submit_test(url, test_id, exam):
+def submit_test(session, url, test_id, exam_code):
     surl = "https://u1.oliveboard.in/exams/tests/p/submittestfull.cgi"
-
-    headers = {
-        "Accept": "*/*",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Connection": "keep-alive",
+    clean_exam = exam_code.split('_')[0]
+    
+    post_headers = {
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "Cookie": COOKIES,
-        "Host": "u1.oliveboard.in",
         "Origin": "https://u1.oliveboard.in",
         "Referer": url,
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-origin",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
         "X-Requested-With": "XMLHttpRequest",
-        "sec-ch-ua": '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
     }
-
-    q_value = str(test_id)
+    
+    q_val = str(test_id)
     raw_data = (
-        f"data=%7B%22{q_value}001%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2201%3A30%3A00%22%2C%22end%22%3A%2201%3A29%3A58%22%7D%5D%2C%22o%22%3A%22%22%7D%2C"
-        f"%22{q_value}002%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A57%22%2C%22end%22%3A%2200%3A59%3A53%22%7D%5D%2C%22o%22%3A%221%22%7D%2C"
-        f"%22{q_value}003%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A53%22%2C%22end%22%3A%2200%3A59%3A47%22%7D%5D%2C%22o%22%3A%22%22%7D%2C"
-        f"%22{q_value}004%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A47%22%2C%22end%22%3A%2200%3A59%3A46%22%7D%2C%7B%22st%22%3A%2200%3A59%3A46%22%2C%22end%22%3A%2200%3A59%3A43%22%7D%5D%2C%22o%22%3A%22%22%7D%7D"
-        f"&uid=&qpi={test_id}&ppi=-1&lang=eqt&c={exam}&source=web"
+        f"data=%7B%22{q_val}001%22%3A%7B%22q%22%3A%22{q_val}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2201%3A30%3A00%22%2C%22end%22%3A%2201%3A29%3A58%22%7D%5D%2C%22o%22%3A%22%22%7D%7D"
+        f"&uid=&qpi={test_id}&ppi=-1&lang=eqt&c={clean_exam}&source=web"
     )
 
     try:
-        response = requests.post(surl, headers=headers, data=raw_data, timeout=30)
-    except requests.exceptions.RequestException as e:
-        print("Submit request failed:", e)
+        resp = session.post(surl, headers=post_headers, data=raw_data, timeout=30)
+        return resp.status_code == 200
+    except Exception:
         return False
-
-    if response.status_code != 200:
-        return False
-
-    body = response.text.strip().lower()
-    if any(bad in body for bad in ("invalid", "error", "login", "expired", "not found")):
-        return False
-
-    return True
-
-
-# ─────────────────────────────────────────────
-# Fetch solution function
-# ─────────────────────────────────────────────
-def fetch_solution(url):
-    headers = dict(HEADERS)
-    try:
-        response = requests.get(url, headers=headers, timeout=30)
-        return response.text
-    except requests.exceptions.RequestException as e:
-        print("Solution fetch failed:", e)
-        return None
-
-
-# ─────────────────────────────────────────────
-# HTML rewriting helpers
-# ─────────────────────────────────────────────
-DEFAULT_BASE_URL  = "https://u1.oliveboard.in/exams/tests/"
-SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
-
 
 def _rewrite_links(html, base_url):
     soup = BeautifulSoup(html, "html.parser")
+    
+    # Base tag injection for CSS/JS assets rendering
+    if not soup.find("base"):
+        base_tag = soup.new_tag("base", href=base_url)
+        if soup.head:
+            soup.head.insert(0, base_tag)
+            
     for tag in soup.find_all(["a", "img", "link", "script"]):
-        if tag.has_attr("href") and not tag["href"].startswith("http"):
+        if tag.has_attr("href") and not tag["href"].startswith(("http", "data:")):
             tag["href"] = urljoin(base_url, tag["href"])
-        if tag.has_attr("src") and not tag["src"].startswith("http"):
+        if tag.has_attr("src") and not tag["src"].startswith(("http", "data:")):
             tag["src"] = urljoin(base_url, tag["src"])
     return soup.prettify()
 
-
 def modify_html(html, full_url):
-    return _rewrite_links(html, DEFAULT_BASE_URL)
-
+    return _rewrite_links(html, "https://u1.oliveboard.in/exams/tests/")
 
 def mody_html(html, full_url):
-    return _rewrite_links(html, SOLUTION_BASE_URL)
+    return _rewrite_links(html, "https://u1.oliveboard.in/exams/solution/")
 
-
-# ─────────────────────────────────────────────
 print("Bot started…")
 bot.run_until_disconnected()
