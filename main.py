@@ -27,7 +27,8 @@ async def start(event):
     await event.reply(
         "Welcome to the Mock Extractor Bot!\n\n"
         "Send /fetch exam testid for oliveboard\n\n"
-        "Example: /fetch ntpc1 1\n\n"
+        "Example: /fetch ibpspo 1\n"
+        "Example: /fetch sbipo 1\n\n"
         "Powered by Team SPY"
     )
 
@@ -53,7 +54,9 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
+# SSC, Railway aur Banking sabhi exams ke base URIs
 BASE_URIS = {
+    # SSC & Railway
     "cgl1":    "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
     "chsl":    "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
     "chsl2":   "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
@@ -63,11 +66,19 @@ BASE_URIS = {
     "rrbalp1": "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
     "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
     "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
+    
+    # Banking Exams Added
+    "ibpspo":    "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
+    "ibpsclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
+    "sbipo":     "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
+    "sbiclerk":  "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
+    "rrbpo":     "https://u1.oliveboard.in/exams/tests/?c=rrbpo&testid={test_id}",
+    "rrbclerk":  "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
 }
 
 
 # ─────────────────────────────────────────────
-# /fetch handler (Owner restriction removed)
+# /fetch handler
 # ─────────────────────────────────────────────
 @bot.on(events.NewMessage(pattern=r"/fetch (\w+) (\d+)"))
 async def fetch_exam(event):
