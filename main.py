@@ -28,8 +28,8 @@ async def start(event):
         "Welcome to the Mock Extractor Bot!\n\n"
         "Send /fetch exam testid for oliveboard\n\n"
         "Example: /fetch sbipo 1\n"
-        "Example: /fetch rrbpo 1\n"
-        "Example: /fetch ibpsclerkmain 1\n\n"
+        "Example: /fetch rrbpomain 1\n"
+        "Example: /fetch rrbposectional 1\n\n"
         "Powered by Team SPY"
     )
 
@@ -55,27 +55,42 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# Corrected Category Slugs for Prelims & Mains
+# Comprehensive Category Slugs including RRB Prelims, Mains, Sectionals & Banking Exams
 BASE_URIS = {
-    "cgl1":        "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
-    "chsl":        "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
-    "chsl2":       "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
-    "sscmts":      "https://u1.oliveboard.in/exams/tests/?c=sscmts&testid={test_id}",
-    "ntpc1":       "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
-    "ntpc2":       "https://u1.oliveboard.in/exams/tests/?c=ntpc2&os=1&testid={test_id}",
-    "rrbalp1":     "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
-    "rrbalp2":     "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
-    "rrbgrpd":     "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
-    "ibpspo":       "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
-    "ibpspomain":   "https://u1.oliveboard.in/exams/tests/?c=ibpspomain&testid={test_id}",
-    "ibpsclerk":    "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
-    "ibpsclerkmain":"https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
-    "sbipo":        "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
-    "sbipomain":    "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
-    "sbiclerk":     "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
-    "sbiclerkmain": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
-    "rrbpo":        "https://u1.oliveboard.in/exams/tests/?c=rrbpo&testid={test_id}",
-    "rrbclerk":     "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
+    # SSC & Railway
+    "cgl1":           "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
+    "chsl":           "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
+    "chsl2":          "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
+    "sscmts":         "https://u1.oliveboard.in/exams/tests/?c=sscmts&testid={test_id}",
+    "ntpc1":          "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
+    "ntpc2":          "https://u1.oliveboard.in/exams/tests/?c=ntpc2&os=1&testid={test_id}",
+    "rrbalp1":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
+    "rrbalp2":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
+    "rrbgrpd":        "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
+    
+    # RRB PO & Clerk (Prelims, Mains, Sectionals)
+    "rrbpo":          "https://u1.oliveboard.in/exams/tests/?c=rrbpo&testid={test_id}",
+    "rrbpomain":      "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
+    "rrbclerk":       "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
+    "rrbclerkmain":   "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&testid={test_id}",
+    "rrbposectional": "https://u1.oliveboard.in/exams/tests/?c=rrbposectional&testid={test_id}",
+    "rrbclerksectional": "https://u1.oliveboard.in/exams/tests/?c=rrbclerksectional&testid={test_id}",
+
+    # IBPS PO & Clerk (Prelims, Mains, Sectionals)
+    "ibpspo":         "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
+    "ibpspomain":     "https://u1.oliveboard.in/exams/tests/?c=ibpspomain&testid={test_id}",
+    "ibpsclerk":      "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
+    "ibpsclerkmain":  "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
+    "ibpsposectional": "https://u1.oliveboard.in/exams/tests/?c=ibpsposectional&testid={test_id}",
+    "ibpsclerksectional": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerksectional&testid={test_id}",
+
+    # SBI PO & Clerk (Prelims, Mains, Sectionals)
+    "sbipo":          "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
+    "sbipomain":      "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
+    "sbiclerk":       "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
+    "sbiclerkmain":   "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
+    "sbiposectional": "https://u1.oliveboard.in/exams/tests/?c=sbiposectional&testid={test_id}",
+    "sbiclerksectional": "https://u1.oliveboard.in/exams/tests/?c=sbiclerksectional&testid={test_id}",
 }
 
 
@@ -211,4 +226,3 @@ def mody_html(html, full_url):
 # ─────────────────────────────────────────────
 print("Test Bot started…")
 bot.run_until_disconnected()
-            
