@@ -27,9 +27,9 @@ async def start(event):
     await event.reply(
         "Welcome to the Mock Extractor Bot!\n\n"
         "Send /fetch exam testid for oliveboard\n\n"
-        "Example: /fetch ibpspo 1\n"
-        "Example: /fetch rrbpo 1\n"
-        "Example: /fetch rrbclerk 1\n\n"
+        "Example: /fetch sbipo 1\n"
+        "Example: /fetch ibpsclerkmain 1\n"
+        "Example: /fetch rrbpo 1\n\n"
         "Powered by Team SPY"
     )
 
@@ -55,26 +55,30 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# SSC, Railway aur Banking sabhi exams ke base URIs (RRB PO & Clerk included)
+# Updated BASE_URIS with correct Prelims & Mains category slugs
 BASE_URIS = {
     # SSC & Railway
-    "cgl1":    "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
-    "chsl":    "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
-    "chsl2":   "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
-    "sscmts":  "https://u1.oliveboard.in/exams/tests/?c=sscmts&testid={test_id}",
-    "ntpc1":   "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
-    "ntpc2":   "https://u1.oliveboard.in/exams/tests/?c=ntpc2&os=1&testid={test_id}",
-    "rrbalp1": "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
-    "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
-    "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
+    "cgl1":        "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
+    "chsl":        "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
+    "chsl2":       "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
+    "sscmts":      "https://u1.oliveboard.in/exams/tests/?c=sscmts&testid={test_id}",
+    "ntpc1":       "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
+    "ntpc2":       "https://u1.oliveboard.in/exams/tests/?c=ntpc2&os=1&testid={test_id}",
+    "rrbalp1":     "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
+    "rrbalp2":     "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
+    "rrbgrpd":     "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
     
-    # Banking Exams (IBPS, SBI, RRB)
-    "ibpspo":    "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
-    "ibpsclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
-    "sbipo":     "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
-    "sbiclerk":  "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
-    "rrbpo":     "https://u1.oliveboard.in/exams/tests/?c=rrbpo&testid={test_id}",
-    "rrbclerk":  "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
+    # Banking Exams (Prelims & Mains)
+    "ibpspo":       "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
+    "ibpspomain":   "https://u1.oliveboard.in/exams/tests/?c=ibpspomain&testid={test_id}",
+    "ibpsclerk":    "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
+    "ibpsclerkmain":"https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
+    "sbipo":        "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
+    "sbipomain":    "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
+    "sbiclerk":     "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
+    "sbiclerkmain": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
+    "rrbpo":        "https://u1.oliveboard.in/exams/tests/?c=rrbpo&testid={test_id}",
+    "rrbclerk":     "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
 }
 
 
@@ -104,14 +108,13 @@ async def fetch_exam(event):
         response = requests.get(url, headers=HEADERS, timeout=30)
         response.raise_for_status()
 
-        # Check if response is blank or login-redirected
         if len(response.text) < 500 or "login" in response.text.lower()[:1000]:
             await prog.edit(
                 f"⚠️ Received blank or login page for exam `{exam}` with Test ID `{test_id}`.\n"
                 "Possible reasons:\n"
                 "1. Invalid Test ID for this specific exam category.\n"
                 "2. Expired or invalid COOKIES.\n"
-                "3. Test requires active purchase/subscription on your Oliveboard account."
+                "3. Test requires active purchase/subscription on your account."
             )
             return
 
@@ -128,8 +131,8 @@ async def fetch_exam(event):
             file=file_name,
         )
 
-        # ── 2. Submit the test ────────────────────────────
-        await prog.edit("Auto Submitting the test…")
+        # ── 2. Submit the test & Sections ──────────────────
+        await prog.edit("Auto Submitting sections and test…")
         ok = submit_test(url, test_id, exam)
 
         if not ok:
@@ -171,7 +174,6 @@ async def fetch_exam(event):
     except Exception as e:
         await event.respond(f"Unexpected error: {e}")
     finally:
-        # safe cleanup — never crash if a file wasn't created
         for f in (file_name, file_sol_name):
             try:
                 if os.path.exists(f):
@@ -181,7 +183,7 @@ async def fetch_exam(event):
 
 
 # ─────────────────────────────────────────────
-# Submit the test
+# Submit the test & handle sections navigation
 # ─────────────────────────────────────────────
 def submit_test(url, test_id, exam):
     surl = "https://u1.oliveboard.in/exams/tests/p/submittestfull.cgi"
@@ -208,6 +210,7 @@ def submit_test(url, test_id, exam):
 
     q_value = str(test_id)
 
+    # Payload structured to cover multiple questions across sections for seamless transition
     raw_data = (
         f"data=%7B%22{q_value}001%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2201%3A30%3A00%22%2C%22end%22%3A%2201%3A29%3A58%22%7D%5D%2C%22o%22%3A%22%22%7D%2C"
         f"%22{q_value}002%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A57%22%2C%22end%22%3A%2200%3A59%3A53%22%7D%5D%2C%22o%22%3A%221%22%7D%2C"
@@ -217,7 +220,6 @@ def submit_test(url, test_id, exam):
     )
 
     print("Submitting to:", surl)
-    print("Payload length:", len(raw_data))
     try:
         response = requests.post(surl, headers=headers, data=raw_data, timeout=30)
     except requests.exceptions.RequestException as e:
@@ -225,8 +227,6 @@ def submit_test(url, test_id, exam):
         return False
 
     print("Submit status code:", response.status_code)
-    print("Submit response (first 300 chars):", response.text[:300])
-
     if response.status_code != 200:
         return False
 
