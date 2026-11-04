@@ -2,10 +2,14 @@
 # no part of this code/edits is allowed to use for commercial / sale purposes
 
 import os
+import logging
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from telethon import TelegramClient, events, Button
+
+# Logging enable karein taaki Railway logs mein pata chale bot kahan hai
+logging.basicConfig(level=logging.INFO)
 
 # ─────────────────────────────────────────────
 # CONFIGURATION (Railway Environment Variables)
@@ -17,6 +21,7 @@ COOKIES = os.getenv("COOKIES", "your_cookies_here")
 
 bot = TelegramClient("olive_bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
+# User states track karne ke liye
 user_states = {}
 
 HEADERS = {
@@ -34,25 +39,21 @@ HEADERS = {
 }
 
 BASE_URIS = {
-    # IBPS Clerk
     "ibpsclerk_pre_25":  "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
     "ibpsclerk_main_25": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
     "ibpsclerk_pre_26":  "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk26&testid={test_id}",
     "ibpsclerk_main_26": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain26&testid={test_id}",
 
-    # RRB PO
     "rrbpo_pre_25":  "https://u1.oliveboard.in/exams/tests/?c=rrbpo&testid={test_id}",
     "rrbpo_main_25": "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
     "rrbpo_pre_26":  "https://u1.oliveboard.in/exams/tests/?c=rrbpo26&testid={test_id}",
     "rrbpo_main_26": "https://u1.oliveboard.in/exams/tests/?c=rrbpomain26&testid={test_id}",
 
-    # RRB Clerk
     "rrbclerk_pre_25":  "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
     "rrbclerk_main_25": "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&testid={test_id}",
     "rrbclerk_pre_26":  "https://u1.oliveboard.in/exams/tests/?c=rrbclerk26&testid={test_id}",
     "rrbclerk_main_26": "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain26&testid={test_id}",
 
-    # SBI Clerk & PO
     "sbiclerk_main_25": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
     "sbiclerk_main_26": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain26&testid={test_id}",
     "sbipo_main_25":    "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
@@ -78,76 +79,82 @@ async def button_click(event):
     data = event.data.decode("utf-8")
     if data in BASE_URIS:
         user_states[event.sender_id] = data
-        await event.edit(f"✅ Selected: **{data.upper()}**\n\n💬 Send Test ID (number):")
+        await event.edit(f"✅ Selected: **{data.upper()}**\n\n💬 Ab apna Test ID (number) type karke bhejein:")
 
-@bot.on(events.NewMessage)
+@bot.on(events.NewMessage(func=lambda e: e.is_private))
 async def handle_test_id(event):
     user_id = event.sender_id
-    if user_id in user_states:
-        text = event.text.strip()
-        if text.startswith("/") or not text.isdigit():
+    if user_id not in user_states:
+        return  # Agar user ne exam select nahi kiya hai toh ye message ignore hoga
+
+    text = event.text.strip()
+    if text.startswith("/"):
+        user_states.pop(user_id, None)
+        return
+
+    if not text.isdigit():
+        await event.reply("⚠️ Kripya valid Test ID (sirf numbers) bhejein!")
+        return
+
+    exam = user_states.pop(user_id)
+    test_id = text
+
+    url = BASE_URIS[exam].format(test_id=test_id)
+    file_name = f"exam_{exam}_{test_id}.html"
+    file_sol_name = f"solution_exam_{exam}_{test_id}.html"
+
+    prog = await event.respond("⏳ Extracting Questions…")
+    
+    try:
+        session = requests.Session()
+        session.headers.update(HEADERS)
+
+        response = session.get(url, timeout=30)
+        response.raise_for_status()
+
+        if "login" in response.text.lower()[:2000]:
+            await prog.edit("⚠️ Invalid/Expired Cookies! Railway variables mein COOKIES update karein.")
             return
 
-        exam = user_states.pop(user_id)
-        test_id = text
+        modified_html = modify_html(response.text)
+        with open(file_name, "w", encoding="utf-8") as file:
+            file.write(modified_html)
 
-        url = BASE_URIS[exam].format(test_id=test_id)
-        file_name = f"exam_{exam}_{test_id}.html"
-        file_sol_name = f"solution_exam_{exam}_{test_id}.html"
+        await prog.edit("📤 Uploading Question Paper…")
+        await event.respond(f"📕 Exam: {exam}\n🆔 Test ID: {test_id}\n📂 Question Paper", file=file_name)
 
-        try:
-            prog = await event.respond("⏳ Extracting Questions…")
-            
-            # Session requests Object (Persistent Session Cookie Handling)
-            session = requests.Session()
-            session.headers.update(HEADERS)
+        # Auto Submit Test
+        await prog.edit("🔄 Auto Submitting test…")
+        ok = submit_test(session, url, test_id, exam)
 
-            response = session.get(url, timeout=30)
-            response.raise_for_status()
+        # Solution Page Request
+        sol_url = f"https://u1.oliveboard.in/exams/solution/index3.php?c={exam.split('_')[0]}&testid={test_id}"
+        
+        await prog.edit("🔎 Fetching Solution…")
+        sol_response = session.get(sol_url, timeout=30)
+        sol_html = sol_response.text
 
-            if "login" in response.text.lower()[:2000]:
-                await prog.edit("⚠️ Invalid/Expired Cookies! Update COOKIES in Environment Variables.")
-                return
+        if not sol_html or len(sol_html) < 1000:
+            await prog.edit("⚠️ Solution fetch nahi ho paya (Test submit nahi hua ya locked hai).")
+            return
 
-            modified_html = modify_html(response.text, url)
-            with open(file_name, "w", encoding="utf-8") as file:
-                file.write(modified_html)
+        mod_html = mody_html(sol_html)
+        with open(file_sol_name, "w", encoding="utf-8") as file:
+            file.write(mod_html)
 
-            await prog.edit("📤 Uploading Test Papers…")
-            await event.respond(f"📕 Exam: {exam}\n🆔 Test ID: {test_id}\n📂 Question Paper", file=file_name)
+        await prog.edit("📤 Uploading Solution…")
+        await event.respond(f"📕 Exam: {exam}\n🆔 Test ID: {test_id}\n📂 Solution Paper", file=file_sol_name)
+        await prog.delete()
 
-            # ── Auto Submit Test ──
-            await prog.edit("🔄 Auto Submitting test…")
-            ok = submit_test(session, url, test_id, exam)
-
-            # ── Solution Page Request ──
-            sol_url = f"https://u1.oliveboard.in/exams/solution/index3.php?c={exam.split('_')[0]}&testid={test_id}"
-            
-            await prog.edit("🔎 Fetching Solution…")
-            sol_response = session.get(sol_url, timeout=30)
-            sol_html = sol_response.text
-
-            if not sol_html or len(sol_html) < 1000:
-                await prog.edit("⚠️ Test solution is blank. Test submit nahi ho paaya ya account unlocked nahi hai.")
-                return
-
-            mod_html = mody_html(sol_html, sol_url)
-            with open(file_sol_name, "w", encoding="utf-8") as file:
-                file.write(mod_html)
-
-            await prog.edit("📤 Uploading Solution…")
-            await event.respond(f"📕 Exam: {exam}\n🆔 Test ID: {test_id}\n📂 Solution Paper", file=file_sol_name)
-            await prog.delete()
-
-        except Exception as e:
-            await event.respond(f"❌ Error: {e}")
-        finally:
-            for f in (file_name, file_sol_name):
-                if os.path.exists(f):
-                    try:
-                        os.remove(f)
-                    except OSError:
-                        pass
+    except Exception as e:
+        await event.respond(f"❌ Error aagayi: {e}")
+    finally:
+        for f in (file_name, file_sol_name):
+            if os.path.exists(f):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
 
 def submit_test(session, url, test_id, exam_code):
     surl = "https://u1.oliveboard.in/exams/tests/p/submittestfull.cgi"
@@ -174,8 +181,6 @@ def submit_test(session, url, test_id, exam_code):
 
 def _rewrite_links(html, base_url):
     soup = BeautifulSoup(html, "html.parser")
-    
-    # Base tag injection for CSS/JS assets rendering
     if not soup.find("base"):
         base_tag = soup.new_tag("base", href=base_url)
         if soup.head:
@@ -188,11 +193,11 @@ def _rewrite_links(html, base_url):
             tag["src"] = urljoin(base_url, tag["src"])
     return soup.prettify()
 
-def modify_html(html, full_url):
+def modify_html(html):
     return _rewrite_links(html, "https://u1.oliveboard.in/exams/tests/")
 
-def mody_html(html, full_url):
+def mody_html(html):
     return _rewrite_links(html, "https://u1.oliveboard.in/exams/solution/")
 
-print("Bot started…")
+print("Bot started and running...")
 bot.run_until_disconnected()
