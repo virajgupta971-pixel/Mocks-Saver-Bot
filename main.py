@@ -190,6 +190,16 @@ DEFAULT_BASE_URL  = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
 
 
+WATERMARK_TEXT = "Banking Aura"
+WATERMARK_HTML = """<style>
+#ba-watermark{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;display:flex;align-items:center;justify-content:center;user-select:none}
+#ba-watermark span{font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:9vw;letter-spacing:.05em;white-space:nowrap;color:rgba(0,0,0,.07);transform:rotate(-30deg)}
+@media print{#ba-watermark span{color:rgba(0,0,0,.12)}}
+</style>
+<div id="ba-watermark" aria-hidden="true"><span>%s</span></div>
+""" % WATERMARK_TEXT
+
+
 def _rewrite_links(html, base_url):
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup.find_all(["a", "img", "link", "script"]):
@@ -197,6 +207,18 @@ def _rewrite_links(html, base_url):
             tag["href"] = urljoin(base_url, tag["href"])
         if tag.has_attr("src") and not tag["src"].startswith("http"):
             tag["src"] = urljoin(base_url, tag["src"])
+
+    # Fix Mark for Review / Save & Next / Clear etc.: these links only exist to run
+    # their onclick handler, so they must not navigate (which opened a new tab).
+    for a in soup.find_all("a"):
+        if a.has_attr("onclick"):
+            a["href"] = "javascript:void(0)"
+            a.attrs.pop("target", None)
+
+    # Banking Aura watermark
+    if soup.body is not None and not soup.find(id="ba-watermark"):
+        soup.body.append(BeautifulSoup(WATERMARK_HTML, "html.parser"))
+
     return soup.prettify()
 
 
