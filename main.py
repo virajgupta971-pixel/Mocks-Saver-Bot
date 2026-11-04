@@ -28,7 +28,8 @@ async def start(event):
         "Welcome to the Mock Extractor Bot!\n\n"
         "Send /fetch exam testid for oliveboard\n\n"
         "Example: /fetch ibpspo 1\n"
-        "Example: /fetch sbipo 1\n\n"
+        "Example: /fetch rrbpo 1\n"
+        "Example: /fetch rrbclerk 1\n\n"
         "Powered by Team SPY"
     )
 
@@ -54,7 +55,7 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# SSC, Railway aur Banking sabhi exams ke base URIs
+# SSC, Railway aur Banking sabhi exams ke base URIs (RRB PO & Clerk included)
 BASE_URIS = {
     # SSC & Railway
     "cgl1":    "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
@@ -67,7 +68,7 @@ BASE_URIS = {
     "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
     "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
     
-    # Banking Exams Added
+    # Banking Exams (IBPS, SBI, RRB)
     "ibpspo":    "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
     "ibpsclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
     "sbipo":     "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
@@ -87,7 +88,7 @@ async def fetch_exam(event):
 
     if exam not in BASE_URIS:
         await event.respond(
-            "Invalid exam type! Supported types are: " + ", ".join(BASE_URIS.keys())
+            "Invalid exam type! Supported types are:\n" + ", ".join(BASE_URIS.keys())
         )
         return
 
@@ -97,15 +98,26 @@ async def fetch_exam(event):
     file_sol_name = f"solution_exam_{exam}_{test_id}.html"
 
     try:
+        prog = await bot.send_message(event.chat_id, "Fetching Question Paper…")
+
         # ── 1. Download question paper ─────────────────────
         response = requests.get(url, headers=HEADERS, timeout=30)
         response.raise_for_status()
 
+        # Check if response is blank or login-redirected
+        if len(response.text) < 500 or "login" in response.text.lower()[:1000]:
+            await prog.edit(
+                f"⚠️ Received blank or login page for exam `{exam}` with Test ID `{test_id}`.\n"
+                "Possible reasons:\n"
+                "1. Invalid Test ID for this specific exam category.\n"
+                "2. Expired or invalid COOKIES.\n"
+                "3. Test requires active purchase/subscription on your Oliveboard account."
+            )
+            return
+
         modified_html = modify_html(response.text, url)
         with open(file_name, "w", encoding="utf-8") as file:
             file.write(modified_html)
-
-        prog = await bot.send_message(event.chat_id, "Extracting Questions…")
 
         await prog.edit("Uploading Test Papers…")
         await event.respond(
@@ -115,18 +127,16 @@ async def fetch_exam(event):
             "Powered by Team SPY",
             file=file_name,
         )
+
         # ── 2. Submit the test ────────────────────────────
         await prog.edit("Auto Submitting the test…")
         ok = submit_test(url, test_id, exam)
 
         if not ok:
             await prog.edit(
-                "⚠️ Test submission failed (invalid/expired cookies or already submitted). "
-                "Skipping solution fetch."
+                "⚠️ Test submission failed or rejected by server. "
+                "The solution might not generate properly for this exam type."
             )
-            return
-
-        await prog.edit("Test Submitted Successfully…")
 
         # ── 3. Fetch solution ────────────────────────────
         sol_url = url.replace(
@@ -138,8 +148,8 @@ async def fetch_exam(event):
         await prog.edit("Trying to fetch the solution…")
         sol_html = fetch_solution(sol_url)
 
-        if not sol_html or "login" in sol_html.lower()[:2000] and "solution" not in sol_html.lower():
-            await prog.edit("⚠️ Could not fetch solution (login page returned).")
+        if not sol_html or len(sol_html) < 500 or ("login" in sol_html.lower()[:2000] and "solution" not in sol_html.lower()):
+            await prog.edit("⚠️ Could not fetch solution (page is blank or returned login screen).")
             return
 
         mod_html = mody_html(sol_html, sol_url)
