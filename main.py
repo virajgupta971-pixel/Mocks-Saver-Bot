@@ -6,8 +6,14 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from telethon import TelegramClient, events
-from config import API_ID, API_HASH, BOT_TOKEN, COOKIES, OWNER_ID
 
+# ─────────────────────────────────────────────
+# CONFIGURATION (Railway Environment Variables)
+# ─────────────────────────────────────────────
+API_ID = int(os.getenv("API_ID", "1234567"))          # Railway variables se uthayega
+API_HASH = os.getenv("API_HASH", "your_api_hash")     # Railway variables se uthayega
+BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")  # Railway variables se uthayega
+COOKIES = os.getenv("COOKIES", "your_cookies_here")   # Railway variables se uthayega
 
 # ─────────────────────────────────────────────
 # Initialize the Telethon client
@@ -61,14 +67,10 @@ BASE_URIS = {
 
 
 # ─────────────────────────────────────────────
-# /fetch handler
+# /fetch handler (Owner restriction removed)
 # ─────────────────────────────────────────────
 @bot.on(events.NewMessage(pattern=r"/fetch (\w+) (\d+)"))
 async def fetch_exam(event):
-    if event.sender_id != OWNER_ID:
-        await event.reply("Not allowed")
-        return
-
     exam    = event.pattern_match.group(1).lower()
     test_id = event.pattern_match.group(2)
 
@@ -80,7 +82,7 @@ async def fetch_exam(event):
 
     url = BASE_URIS[exam].format(test_id=test_id)
 
-    file_name    = f"exam_{exam}_{test_id}.html"
+    file_name     = f"exam_{exam}_{test_id}.html"
     file_sol_name = f"solution_exam_{exam}_{test_id}.html"
 
     try:
@@ -183,7 +185,6 @@ def submit_test(url, test_id, exam):
         "sec-ch-ua-platform": '"Windows"',
     }
 
-    # Correct q_value — was previously f"{test_id}001" which caused "001001" keys
     q_value = str(test_id)
 
     raw_data = (
@@ -208,8 +209,6 @@ def submit_test(url, test_id, exam):
     if response.status_code != 200:
         return False
 
-    # Oliveboard returns JSON like {"status":"1", "msg":"..."} on success
-    # Treat anything that clearly says "invalid"/"error"/"login" as failure
     body = response.text.strip().lower()
     if any(bad in body for bad in ("invalid", "error", "login", "expired", "not found")):
         return False
@@ -221,7 +220,7 @@ def submit_test(url, test_id, exam):
 # Fetch solution page
 # ─────────────────────────────────────────────
 def fetch_solution(url):
-    headers = dict(HEADERS)  # reuse base headers
+    headers = dict(HEADERS)
     try:
         response = requests.get(url, headers=headers, timeout=30)
         print("Solution fetch status:", response.status_code)
