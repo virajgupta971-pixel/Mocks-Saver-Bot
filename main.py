@@ -1,3 +1,4 @@
+
 # Copyright github.com/devgaganin
 # no part of this code/edits is allowed to use for commercial / sale purposes
 
@@ -5,20 +6,23 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, Button
 
 # ─────────────────────────────────────────────
 # CONFIGURATION (Railway Environment Variables)
 # ─────────────────────────────────────────────
-API_ID = int(os.getenv("API_ID", "1234567"))          # Railway variables se uthayega
-API_HASH = os.getenv("API_HASH", "your_api_hash")     # Railway variables se uthayega
-BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")  # Railway variables se uthayega
-COOKIES = os.getenv("COOKIES", "your_cookies_here")   # Railway variables se uthayega
+API_ID = int(os.getenv("API_ID", "1234567"))          
+API_HASH = os.getenv("API_HASH", "your_api_hash")     
+BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")  
+COOKIES = os.getenv("COOKIES", "your_cookies_here")   
 
 # ─────────────────────────────────────────────
 # Initialize the Telethon client
 # ─────────────────────────────────────────────
 bot = TelegramClient("olive_bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+
+# User states track karne ke liye dictionary (user_id -> selected_exam)
+user_states = {}
 
 
 @bot.on(events.NewMessage(pattern="/start"))
@@ -26,9 +30,7 @@ async def start(event):
     """Handle /start command"""
     await event.reply(
         "Welcome to the Mock Extractor Bot!\n\n"
-        "Send /fetch exam testid for oliveboard\n\n"
-        "Example: /fetch ibpspo 1\n"
-        "Example: /fetch sbipo 1\n\n"
+        "Sirf **/fetch** type karein aur saare exams ki list buttons ke roop mein aa jayegi!\n\n"
         "Powered by Team SPY"
     )
 
@@ -54,124 +56,170 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# SSC, Railway aur Banking sabhi exams ke base URIs
+# Exams aur unke Oliveboard query parameters (`c=...`)
 BASE_URIS = {
-    # SSC & Railway
-    "cgl1":    "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
-    "chsl":    "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
-    "chsl2":   "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
-    "sscmts":  "https://u1.oliveboard.in/exams/tests/?c=sscmts&testid={test_id}",
-    "ntpc1":   "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
-    "ntpc2":   "https://u1.oliveboard.in/exams/tests/?c=ntpc2&os=1&testid={test_id}",
-    "rrbalp1": "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
-    "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
-    "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
+    # IBPS Clerk
+    "ibpsclerk_pre_25":  "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
+    "ibpsclerk_main_25": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
+    "ibpsclerk_pre_26":  "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk26&testid={test_id}",
+    "ibpsclerk_main_26": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain26&testid={test_id}",
+
+    # RRB PO
+    "rrbpo_pre_25":  "https://u1.oliveboard.in/exams/tests/?c=rrbpo&testid={test_id}",
+    "rrbpo_main_25": "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
+    "rrbpo_pre_26":  "https://u1.oliveboard.in/exams/tests/?c=rrbpo26&testid={test_id}",
+    "rrbpo_main_26": "https://u1.oliveboard.in/exams/tests/?c=rrbpomain26&testid={test_id}",
+
+    # RRB Clerk
+    "rrbclerk_pre_25":  "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
+    "rrbclerk_main_25": "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&testid={test_id}",
+    "rrbclerk_pre_26":  "https://u1.oliveboard.in/exams/tests/?c=rrbclerk26&testid={test_id}",
+    "rrbclerk_main_26": "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain26&testid={test_id}",
+
+    # SBI Clerk & PO Mains 2025/2026
+    "sbiclerk_main_25": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
+    "sbiclerk_main_26": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain26&testid={test_id}",
+    "sbipo_main_25":    "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
+    "sbipo_main_26":    "https://u1.oliveboard.in/exams/tests/?c=sbipomain26&testid={test_id}",
     
-    # Banking Exams Added
-    "ibpspo":    "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
-    "ibpsclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
-    "sbipo":     "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
-    "sbiclerk":  "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
-    "rrbpo":     "https://u1.oliveboard.in/exams/tests/?c=rrbpo&testid={test_id}",
-    "rrbclerk":  "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
+    # SSC & Railway basics
+    "cgl1": "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
+    "ntpc1": "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
 }
 
 
 # ─────────────────────────────────────────────
-# /fetch handler
+# Step 1: /fetch command par buttons dikhana
 # ─────────────────────────────────────────────
-@bot.on(events.NewMessage(pattern=r"/fetch (\w+) (\d+)"))
-async def fetch_exam(event):
-    exam    = event.pattern_match.group(1).lower()
-    test_id = event.pattern_match.group(2)
+@bot.on(events.NewMessage(pattern=r"^/fetch$"))
+async def fetch_menu(event):
+    buttons = [
+        [Button.inline("📘 IBPS Clerk Pre '25", data="ibpsclerk_pre_25"), Button.inline("📙 IBPS Clerk Mains '25", data="ibpsclerk_main_25")],
+        [Button.inline("📘 IBPS Clerk Pre '26", data="ibpsclerk_pre_26"), Button.inline("📙 IBPS Clerk Mains '26", data="ibpsclerk_main_26")],
+        [Button.inline("📗 RRB PO Pre '25", data="rrbpo_pre_25"), Button.inline("📕 RRB PO Mains '25", data="rrbpo_main_25")],
+        [Button.inline("📗 RRB PO Pre '26", data="rrbpo_pre_26"), Button.inline("📕 RRB PO Mains '26", data="rrbpo_main_26")],
+        [Button.inline("📒 RRB Clerk Pre '25", data="rrbclerk_pre_25"), Button.inline("📓 RRB Clerk Mains '25", data="rrbclerk_main_25")],
+        [Button.inline("📒 RRB Clerk Pre '26", data="rrbclerk_pre_26"), Button.inline("📓 RRB Clerk Mains '26", data="rrbclerk_main_26")],
+        [Button.inline("💳 SBI Clerk Mains '25", data="sbiclerk_main_25"), Button.inline("💳 SBI Clerk Mains '26", data="sbiclerk_main_26")],
+        [Button.inline("💰 SBI PO Mains '25", data="sbipo_main_25"), Button.inline("💰 SBI PO Mains '26", data="sbipo_main_26")],
+    ]
+    await event.respond("📂 **Kripya niche diye gaye list me se apna Exam select karein:**", buttons=buttons)
 
-    if exam not in BASE_URIS:
-        await event.respond(
-            "Invalid exam type! Supported types are: " + ", ".join(BASE_URIS.keys())
+
+# ─────────────────────────────────────────────
+# Step 2: Button click hone par exam save karna aur test ID maangna
+# ─────────────────────────────────────────────
+@bot.on(events.CallbackQuery)
+async def button_click(event):
+    data = event.data.decode("utf-8")
+    if data in BASE_URIS:
+        user_states[event.sender_id] = data
+        await event.edit(
+            f"✅ Aapne select kiya: **{data.upper()}**\n\n"
+            "💬 Ab kripya apna **Test ID (number)** type karke bhej dein (jaise: `2`):"
         )
-        return
 
-    url = BASE_URIS[exam].format(test_id=test_id)
 
-    file_name     = f"exam_{exam}_{test_id}.html"
-    file_sol_name = f"solution_exam_{exam}_{test_id}.html"
+# ─────────────────────────────────────────────
+# Step 3: Test ID milne par process start karna
+# ─────────────────────────────────────────────
+@bot.on(events.NewMessage)
+async def handle_test_id(event):
+    user_id = event.sender_id
+    if user_id in user_states:
+        text = event.text.strip()
+        
+        # Agar user ne koi dusri command bhej di toh state cancel kar do
+        if text.startswith("/"):
+            return
 
-    try:
-        # ── 1. Download question paper ─────────────────────
-        response = requests.get(url, headers=HEADERS, timeout=30)
-        response.raise_for_status()
+        if not text.isdigit():
+            await event.reply("⚠️ Kripya valid Test ID (sirf numbers) bhejein!")
+            return
 
-        modified_html = modify_html(response.text, url)
-        with open(file_name, "w", encoding="utf-8") as file:
-            file.write(modified_html)
+        exam = user_states.pop(user_id)
+        test_id = text
 
-        prog = await bot.send_message(event.chat_id, "Extracting Questions…")
+        url = BASE_URIS[exam].format(test_id=test_id)
+        file_name = f"exam_{exam}_{test_id}.html"
+        file_sol_name = f"solution_exam_{exam}_{test_id}.html"
 
-        await prog.edit("Uploading Test Papers…")
-        await event.respond(
-            f"📕 Exam Name: {exam}\n"
-            f"🆔 Test ID: {test_id}\n"
-            f"🥹 Type: Question\n\n"
-            "Powered by Team SPY",
-            file=file_name,
-        )
-        # ── 2. Submit the test ────────────────────────────
-        await prog.edit("Auto Submitting the test…")
-        ok = submit_test(url, test_id, exam)
+        try:
+            prog = await event.respond("⏳ Extracting Questions…")
 
-        if not ok:
-            await prog.edit(
-                "⚠️ Test submission failed (invalid/expired cookies or already submitted). "
-                "Skipping solution fetch."
+            # ── 1. Download question paper ─────────────────────
+            response = requests.get(url, headers=HEADERS, timeout=30)
+            response.raise_for_status()
+
+            modified_html = modify_html(response.text, url)
+            with open(file_name, "w", encoding="utf-8") as file:
+                file.write(modified_html)
+
+            await prog.edit("📤 Uploading Test Papers…")
+            await event.respond(
+                f"📕 Exam: {exam}\n"
+                f"🆔 Test ID: {test_id}\n"
+                f"📂 Type: Question Paper\n\n"
+                "Powered by Team SPY",
+                file=file_name,
             )
-            return
 
-        await prog.edit("Test Submitted Successfully…")
+            # ── 2. Submit the test ────────────────────────────
+            await prog.edit("🔄 Auto Submitting the test…")
+            ok = submit_test(url, test_id, exam)
 
-        # ── 3. Fetch solution ────────────────────────────
-        sol_url = url.replace(
-            "https://u1.oliveboard.in/exams/tests/",
-            "https://u1.oliveboard.in/exams/solution/index3.php",
-        )
-        print("Solution URL:", sol_url)
+            if not ok:
+                await prog.edit(
+                    "⚠️ Test submission failed (invalid/expired cookies or already submitted). "
+                    "Skipping solution fetch."
+                )
+                return
 
-        await prog.edit("Trying to fetch the solution…")
-        sol_html = fetch_solution(sol_url)
+            await prog.edit("✅ Test Submitted Successfully…")
 
-        if not sol_html or "login" in sol_html.lower()[:2000] and "solution" not in sol_html.lower():
-            await prog.edit("⚠️ Could not fetch solution (login page returned).")
-            return
+            # ── 3. Fetch solution ────────────────────────────
+            sol_url = url.replace(
+                "https://u1.oliveboard.in/exams/tests/",
+                "https://u1.oliveboard.in/exams/solution/index3.php",
+            )
+            print("Solution URL:", sol_url)
 
-        mod_html = mody_html(sol_html, sol_url)
-        with open(file_sol_name, "w", encoding="utf-8") as file:
-            file.write(mod_html)
+            await prog.edit("🔎 Trying to fetch the solution…")
+            sol_html = fetch_solution(sol_url)
 
-        await prog.edit("Uploading Solution…")
-        await event.respond(
-            f"📕 Exam Name: {exam}\n"
-            f"🆔 Test ID: {test_id}\n"
-            f"🥹 Type: Solution\n\n"
-            "Powered by Team SPY",
-            file=file_sol_name,
-        )
-        await prog.delete()
+            if not sol_html or "login" in sol_html.lower()[:2000] and "solution" not in sol_html.lower():
+                await prog.edit("⚠️ Could not fetch solution (login page returned).")
+                return
 
-    except requests.exceptions.RequestException as e:
-        await event.respond(f"Network error while fetching test details: {e}")
-    except Exception as e:
-        await event.respond(f"Unexpected error: {e}")
-    finally:
-        # safe cleanup — never crash if a file wasn't created
-        for f in (file_name, file_sol_name):
-            try:
-                if os.path.exists(f):
-                    os.remove(f)
-            except OSError:
-                pass
+            mod_html = mody_html(sol_html, sol_url)
+            with open(file_sol_name, "w", encoding="utf-8") as file:
+                file.write(mod_html)
+
+            await prog.edit("📤 Uploading Solution…")
+            await event.respond(
+                f"📕 Exam: {exam}\n"
+                f"🆔 Test ID: {test_id}\n"
+                f"📂 Type: Solution\n\n"
+                "Powered by Team SPY",
+                file=file_sol_name,
+            )
+            await prog.delete()
+
+        except requests.exceptions.RequestException as e:
+            await event.respond(f"❌ Network error: {e}")
+        except Exception as e:
+            await event.respond(f"❌ Unexpected error: {e}")
+        finally:
+            for f in (file_name, file_sol_name):
+                try:
+                    if os.path.exists(f):
+                        os.remove(f)
+                except OSError:
+                    pass
 
 
 # ─────────────────────────────────────────────
-# Submit the test
+# Submit the test function
 # ─────────────────────────────────────────────
 def submit_test(url, test_id, exam):
     surl = "https://u1.oliveboard.in/exams/tests/p/submittestfull.cgi"
@@ -197,7 +245,6 @@ def submit_test(url, test_id, exam):
     }
 
     q_value = str(test_id)
-
     raw_data = (
         f"data=%7B%22{q_value}001%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2201%3A30%3A00%22%2C%22end%22%3A%2201%3A29%3A58%22%7D%5D%2C%22o%22%3A%22%22%7D%2C"
         f"%22{q_value}002%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A57%22%2C%22end%22%3A%2200%3A59%3A53%22%7D%5D%2C%22o%22%3A%221%22%7D%2C"
@@ -206,16 +253,11 @@ def submit_test(url, test_id, exam):
         f"&uid=&qpi={test_id}&ppi=-1&lang=eqt&c={exam}&source=web"
     )
 
-    print("Submitting to:", surl)
-    print("Payload length:", len(raw_data))
     try:
         response = requests.post(surl, headers=headers, data=raw_data, timeout=30)
     except requests.exceptions.RequestException as e:
         print("Submit request failed:", e)
         return False
-
-    print("Submit status code:", response.status_code)
-    print("Submit response (first 300 chars):", response.text[:300])
 
     if response.status_code != 200:
         return False
@@ -228,13 +270,12 @@ def submit_test(url, test_id, exam):
 
 
 # ─────────────────────────────────────────────
-# Fetch solution page
+# Fetch solution function
 # ─────────────────────────────────────────────
 def fetch_solution(url):
     headers = dict(HEADERS)
     try:
         response = requests.get(url, headers=headers, timeout=30)
-        print("Solution fetch status:", response.status_code)
         return response.text
     except requests.exceptions.RequestException as e:
         print("Solution fetch failed:", e)
