@@ -208,7 +208,7 @@ def fetch_solution(url):
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers (Dynamic Exam-Specific Section Locking & Timer Engine)
+# HTML rewriting helpers (Robust Dynamic Sectional Timer & Locking Engine)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
@@ -225,7 +225,7 @@ WATERMARK_HTML = (
     % WATERMARK_TEXT
 )
 
-# Dynamic Section-Locking & Sectional Timer Engine (Reads original test timing automatically)
+# Robust Dynamic Engine matching Oliveboard Interface
 EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
 (function() {
     // 1. Block beforeunload popup
@@ -236,18 +236,24 @@ EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
         return originalAddEventListener.call(window, type, listener, options);
     };
 
-    // 2. Dynamic Sectional Locking & Timer Engine (Detects test's own secTimes & secList)
+    // 2. Exact Sectional Timing & Locking Synchronization
     window.addEventListener('load', function() {
         setTimeout(function() {
-            // Automatically pickup original test variables or fallback safely
-            window.secList = (typeof secList !== 'undefined' && Array.isArray(secList)) ? secList : ['Reasoning', 'Quantitative Aptitude'];
-            window.secTracker = (typeof secTracker !== 'undefined' && Array.isArray(secTracker)) ? secTracker : [35, 35];
-            window.sectionDurations = (typeof secTimes !== 'undefined' && Array.isArray(secTimes) && secTimes.length > 0) ? secTimes : [1200, 1200];
+            // Pick up exact test parameters or intelligently fallback
+            window.secList = (typeof secList !== 'undefined' && Array.isArray(secList) && secList.length > 0) ? secList : ['Reasoning', 'Quantitative Aptitude'];
+            window.secTracker = (typeof secTracker !== 'undefined' && Array.isArray(secTracker) && secTracker.length > 0) ? secTracker : [35, 35];
+            
+            // Handle secTimes mapping properly
+            if (typeof secTimes !== 'undefined' && Array.isArray(secTimes) && secTimes.length > 0) {
+                window.sectionDurations = secTimes;
+            } else {
+                window.sectionDurations = [1200, 1200];
+            }
 
             window.currentSecIndex = 0;
             window.activeSecTimeLeft = window.sectionDurations[window.currentSecIndex] || 1200;
 
-            // Create Sectional Timer UI on Top Header
+            // Create Sectional Timer UI on Top Header matching the screenshot badge position
             let timerBox = document.getElementById('banking-aura-sectimer');
             if (!timerBox) {
                 let box = document.createElement('div');
