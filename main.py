@@ -208,7 +208,7 @@ def fetch_solution(url):
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers (Independent Section Locking & Sectional Timer Engine)
+# HTML rewriting helpers (Dynamic Exam-Specific Section Locking & Timer Engine)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
@@ -225,7 +225,7 @@ WATERMARK_HTML = (
     % WATERMARK_TEXT
 )
 
-# Independent Custom Section-Locking & Sectional Timer Engine
+# Dynamic Section-Locking & Sectional Timer Engine (Reads original test timing automatically)
 EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
 (function() {
     // 1. Block beforeunload popup
@@ -236,20 +236,16 @@ EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
         return originalAddEventListener.call(window, type, listener, options);
     };
 
-    // 2. Independent Sectional Locking & Timer Engine
+    // 2. Dynamic Sectional Locking & Timer Engine (Detects test's own secTimes & secList)
     window.addEventListener('load', function() {
         setTimeout(function() {
-            if (typeof secList === 'undefined' || !Array.isArray(secList)) {
-                window.secList = ['Reasoning', 'Quantitative Aptitude'];
-            }
-            if (typeof secTracker === 'undefined' || !Array.isArray(secTracker)) {
-                window.secTracker = [40, 40];
-            }
+            // Automatically pickup original test variables or fallback safely
+            window.secList = (typeof secList !== 'undefined' && Array.isArray(secList)) ? secList : ['Reasoning', 'Quantitative Aptitude'];
+            window.secTracker = (typeof secTracker !== 'undefined' && Array.isArray(secTracker)) ? secTracker : [35, 35];
+            window.sectionDurations = (typeof secTimes !== 'undefined' && Array.isArray(secTimes) && secTimes.length > 0) ? secTimes : [1200, 1200];
 
             window.currentSecIndex = 0;
-            // Sectional time limits in seconds (Sec 0: 25 mins = 1500s, Sec 1: 20 mins = 1200s)
-            window.sectionDurations = [1500, 1200]; 
-            window.activeSecTimeLeft = window.sectionDurations[window.currentSecIndex] || 1500;
+            window.activeSecTimeLeft = window.sectionDurations[window.currentSecIndex] || 1200;
 
             // Create Sectional Timer UI on Top Header
             let timerBox = document.getElementById('banking-aura-sectimer');
@@ -275,14 +271,14 @@ EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
             }, 1000);
 
             function autoAdvanceSection() {
-                if (window.currentSecIndex < secList.length - 1) {
+                if (window.currentSecIndex < window.secList.length - 1) {
                     window.currentSecIndex++;
                     window.activeSecTimeLeft = window.sectionDurations[window.currentSecIndex] || 1200;
                     
                     // Shift to start question of next section
                     let qStartCount = 1;
                     for(let k=0; k<window.currentSecIndex; k++) {
-                        qStartCount += parseInt(secTracker[k] || 40);
+                        qStartCount += parseInt(window.secTracker[k] || 35);
                     }
                     let targetQid = (typeof firstQid !== 'undefined' ? firstQid : 25001) + qStartCount - 1;
                     if (typeof displayQuestions === 'function') {
@@ -296,7 +292,7 @@ EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
             }
 
             function applyLockStyles() {
-                for(let i=0; i<secList.length; i++) {
+                for(let i=0; i<window.secList.length; i++) {
                     let tabElem = document.getElementById("sec-e" + i);
                     if (tabElem) {
                         if (i > window.currentSecIndex) {
