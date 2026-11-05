@@ -21,7 +21,7 @@ API_ID = int(os.getenv("API_ID", "1234567"))
 API_HASH = os.getenv("API_HASH", "your_api_hash")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")
 COOKIES = os.getenv("COOKIES", "your_cookies_here")
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Aapka Telegram User ID yahan env se aayega
+OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Telegram User ID
 
 # ─────────────────────────────────────────────
 # Initialize the Telethon client
@@ -35,7 +35,7 @@ async def start(event):
     await event.reply(
         "**Welcome to the Mock Extractor Bot!**\n\n"
         "Send `/fetch exam testid` for oliveboard\n\n"
-        "**__Example: `/fetch rrbpo 1`__**\n\n"
+        "**__Example: `/fetch rrbposecpre 1`__**\n\n"
         "__**Powered by Banking Aura**__"
     )
 
@@ -61,7 +61,7 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# Comprehensive Category Slugs (including rrbposecpre)
+# Comprehensive Category Slugs
 BASE_URIS = {
     # SSC & Railway
     "cgl1": "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
@@ -208,7 +208,7 @@ def fetch_solution(url):
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers (Watermarked, No-Unload & Strict Section Lock)
+# HTML rewriting helpers (Independent Section Locking & Sectional Timer Engine)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
@@ -225,7 +225,7 @@ WATERMARK_HTML = (
     % WATERMARK_TEXT
 )
 
-# Yeh script popup block karegi aur Oliveboard ke section-lock / shiftSection ko control karegi
+# Independent Custom Section-Locking & Sectional Timer Engine
 EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
 (function() {
     // 1. Block beforeunload popup
@@ -236,54 +236,102 @@ EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
         return originalAddEventListener.call(window, type, listener, options);
     };
 
-    // 2. Strict Section Locking & Progression Logic
-    window.currentUnlockedSection = 0;
-
+    // 2. Independent Sectional Locking & Timer Engine
     window.addEventListener('load', function() {
-        // Intercept shiftSection to block unauthorized tab jumping
-        if (typeof window.shiftSection === 'function') {
-            var originalShiftSection = window.shiftSection;
-            window.shiftSection = function(sid) {
-                if (sid > window.currentUnlockedSection) {
-                    alert("🔒 Section Locked! Pehle current section complete karein.");
-                    return false;
-                }
-                return originalShiftSection.apply(this, arguments);
-            };
-        }
+        setTimeout(function() {
+            if (typeof secList === 'undefined' || !Array.isArray(secList)) {
+                window.secList = ['Reasoning', 'Quantitative Aptitude'];
+            }
+            if (typeof secTracker === 'undefined' || !Array.isArray(secTracker)) {
+                window.secTracker = [40, 40];
+            }
 
-        // Intercept sendData (Next Section / Submit) to unlock subsequent section
-        if (typeof window.sendData === 'function') {
-            var originalSendData = window.sendData;
-            window.sendData = function() {
-                if (typeof secList !== 'undefined' && Array.isArray(secList)) {
-                    if (window.currentUnlockedSection < secList.length - 1) {
-                        window.currentUnlockedSection++;
-                    }
+            window.currentSecIndex = 0;
+            // Sectional time limits in seconds (Sec 0: 25 mins = 1500s, Sec 1: 20 mins = 1200s)
+            window.sectionDurations = [1500, 1200]; 
+            window.activeSecTimeLeft = window.sectionDurations[window.currentSecIndex] || 1500;
+
+            // Create Sectional Timer UI on Top Header
+            let timerBox = document.getElementById('banking-aura-sectimer');
+            if (!timerBox) {
+                let box = document.createElement('div');
+                box.id = 'banking-aura-sectimer';
+                box.style.cssText = 'position:fixed; top:8px; right:250px; background:#e74c3c; color:#fff; padding:4px 12px; font-weight:bold; border-radius:4px; z-index:999999; font-size:14px; font-family:Arial;';
+                document.body.appendChild(box);
+                timerBox = box;
+            }
+
+            // Countdown Timer Loop
+            window.secTimerHandle = setInterval(function() {
+                if (window.activeSecTimeLeft > 0) {
+                    window.activeSecTimeLeft--;
+                    let mm = Math.floor(window.activeSecTimeLeft / 60);
+                    let ss = window.activeSecTimeLeft % 60;
+                    timerBox.innerHTML = `Sec Time: ${mm < 10 ? '0'+mm : mm}:${ss < 10 ? '0'+ss : ss}`;
                 } else {
-                    window.currentUnlockedSection++;
+                    alert("⏱️ Section Time Over! Moving to the next section.");
+                    autoAdvanceSection();
                 }
-                return originalSendData.apply(this, arguments);
-            };
-        }
+            }, 1000);
 
-        // Visual dimming and locking of tabs dynamically
-        setInterval(function() {
-            for (var i = 0; i < 10; i++) {
-                var tab = document.getElementById("sec-e" + i);
-                if (tab) {
-                    if (i > window.currentUnlockedSection) {
-                        tab.style.opacity = "0.4";
-                        tab.style.cursor = "not-allowed";
-                        tab.title = "Locked Section";
-                    } else {
-                        tab.style.opacity = "1";
-                        tab.style.cursor = "pointer";
-                        tab.title = "";
+            function autoAdvanceSection() {
+                if (window.currentSecIndex < secList.length - 1) {
+                    window.currentSecIndex++;
+                    window.activeSecTimeLeft = window.sectionDurations[window.currentSecIndex] || 1200;
+                    
+                    // Shift to start question of next section
+                    let qStartCount = 1;
+                    for(let k=0; k<window.currentSecIndex; k++) {
+                        qStartCount += parseInt(secTracker[k] || 40);
+                    }
+                    let targetQid = (typeof firstQid !== 'undefined' ? firstQid : 25001) + qStartCount - 1;
+                    if (typeof displayQuestions === 'function') {
+                        displayQuestions(targetQid);
+                    }
+                    applyLockStyles();
+                } else {
+                    alert("Test Time Finished! Submitting test.");
+                    if (typeof finalSubmit === 'function') finalSubmit();
+                }
+            }
+
+            function applyLockStyles() {
+                for(let i=0; i<secList.length; i++) {
+                    let tabElem = document.getElementById("sec-e" + i);
+                    if (tabElem) {
+                        if (i > window.currentSecIndex) {
+                            tabElem.style.opacity = "0.3";
+                            tabElem.style.pointerEvents = "none";
+                            tabElem.title = "Locked Section";
+                        } else {
+                            tabElem.style.opacity = "1";
+                            tabElem.style.pointerEvents = "auto";
+                            tabElem.title = "";
+                        }
                     }
                 }
             }
-        }, 500);
+
+            // Intercept manual tab click / shiftSection function
+            window.nativeShiftSection = window.shiftSection;
+            window.shiftSection = function(sid) {
+                if (sid > window.currentSecIndex) {
+                    alert("🔒 Section Locked! Aap pehla section complete kiye bina aage nahi ja sakte.");
+                    return false;
+                }
+                if (window.nativeShiftSection) {
+                    window.nativeShiftSection(sid);
+                }
+            };
+
+            // Intercept Next Section / Submit button (sendData)
+            window.nativeSendData = window.sendData;
+            window.sendData = function() {
+                autoAdvanceSection();
+            };
+
+            applyLockStyles();
+        }, 1200);
     });
 })();
 </script>
