@@ -55,7 +55,7 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# Comprehensive Category Slugs (Prelims uses 'ibpsrrbscp' for RRB, Mains and others have specific slugs)[span_2](start_span)[span_2](end_span)
+# Comprehensive Category Slugs (Prelims uses 'ibpsrrbscp' for RRB, Mains and others have specific slugs)[span_0](start_span)[span_0](end_span)
 BASE_URIS = {
     # SSC & Railway
     "cgl1":           "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
@@ -68,7 +68,7 @@ BASE_URIS = {
     "rrbalp2":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
     "rrbgrpd":        "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
     
-    # RRB PO & Clerk (Prelims & Mains / Sectionals)[span_3](start_span)[span_3](end_span)
+    # RRB PO & Clerk (Prelims & Mains / Sectionals)[span_1](start_span)[span_1](end_span)
     "rrbpo":          "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbclerk":       "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbpomain":      "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
@@ -195,7 +195,7 @@ def fetch_solution(url):
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers (Branding -> Banking Aura)
+# HTML rewriting helpers (Branding -> Banking Aura & Popup Fix)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL  = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
@@ -229,6 +229,15 @@ def modify_html(html, full_url):
         .currclass { background: #2F72B7 !important; color: #FFF !important; font-weight: bold; }
     """
     soup.head.append(custom_injections)
+
+    # Disable beforeunload popup warning completely
+    fix_script = soup.new_tag("script")
+    fix_script.string = """
+        window.addEventListener('DOMContentLoaded', (event) => {
+            window.onbeforeunload = null;
+        });
+    """
+    soup.body.append(fix_script)
 
     return soup.prettify()
 
