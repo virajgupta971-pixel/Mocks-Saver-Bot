@@ -105,7 +105,7 @@ async def fetch_exam(event):
         await event.respond(
             f"**📕 Exam Name: {exam}**\n"
             f"**🆔 Test ID: {test_id}**\n"
-            f"**✅ Type: Question (With Sectional Timer Support)**\n\n"
+            f"**✅ Type: Question (With Native Timer Support)**\n\n"
             "__**Powered by @Dark_V1rus**__",
             file=file_name,
         )
@@ -197,23 +197,20 @@ WATERMARK_TEXT = "BANKING AURA"
 
 WATERMARK_HTML = """<style> #ba-watermark{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;display:flex;align-items:center;justify-content:center;user-select:none} #ba-watermark span{font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:9vw;letter-spacing:.05em;white-space:nowrap;color:rgba(0,0,0,.07);transform:rotate(-30deg)} @media print{#ba-watermark span{color:rgba(0,0,0,.12)}} </style> <div id="ba-watermark" aria-hidden="true"><span>%s</span></div> """ % WATERMARK_TEXT
 
-# Injection script to force sectional countdown and handle timer ticks locally
+# Injection script targeting Oliveboard's detected timer functions: timerActivate & checkTimer
 SECTION_TIMER_INJECT_SCRIPT = """<script>
 window.addEventListener('DOMContentLoaded', (event) => {
-    console.log("Banking Aura: Sectional Timer & Auto-Switch Enforcer Active");
-    
-    // Override standard alert/popup blocks
+    console.log("Banking Aura: Oliveboard Sectional Timer Enforcer Active");
     window.onbeforeunload = null;
-    
-    // Periodically inspect and hook into Oliveboard's timer counters
+
+    // Periodically hook into Oliveboard's native timer and section functions
     setInterval(() => {
         try {
+            if (typeof window.timerActivate === 'function') {
+                window.timerActivate();
+            }
             if (typeof window.checkTimer === 'function') {
                 window.checkTimer();
-            }
-            // Trigger custom section timeout handlers if present in global scope
-            if (window.currentSection && typeof window.switchSection === 'function') {
-                // Keep native section functions synchronized
             }
         } catch (e) {
             // Suppress background sync errors
