@@ -26,7 +26,7 @@ async def start(event):
     """Handle /start command"""
     await event.reply(
         "Welcome to the Mock Extractor Bot!\n\n"
-        "Send `/fetch exam testid` for modern mock layout\n\n"
+        "Send `/fetch exam testid` for mock papers\n\n"
         "Example: /fetch rrbpo 1\n"
         "Example: /fetch rrbclerk 1\n"
         "Example: /fetch rrbpomain 1\n\n"
@@ -55,38 +55,38 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# Modern Layout Slugs (Using '&os=1' for modern responsive interface)
+# Classic Category Slugs (Ensures full question bundle is downloaded)
 BASE_URIS = {
     # SSC & Railway
-    "cgl1":           "https://u1.oliveboard.in/exams/tests/?c=ssc2019&os=1&testid={test_id}",
-    "chsl":           "https://u1.oliveboard.in/exams/tests/?c=chsl&os=1&testid={test_id}",
-    "chsl2":          "https://u1.oliveboard.in/exams/tests/?c=chsl2&os=1&testid={test_id}",
-    "sscmts":         "https://u1.oliveboard.in/exams/tests/?c=sscmts&os=1&testid={test_id}",
+    "cgl1":           "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
+    "chsl":           "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
+    "chsl2":          "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
+    "sscmts":         "https://u1.oliveboard.in/exams/tests/?c=sscmts&testid={test_id}",
     "ntpc1":          "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
     "ntpc2":          "https://u1.oliveboard.in/exams/tests/?c=ntpc2&os=1&testid={test_id}",
     "rrbalp1":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
-    "rrbalp2":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
-    "rrbgrpd":        "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
+    "rrbalp2":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&testid={test_id}",
+    "rrbgrpd":        "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&testid={test_id}",
     
     # RRB PO & Clerk (Prelims & Mains / Sectionals)[span_1](start_span)[span_1](end_span)
-    "rrbpo":          "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&os=1&testid={test_id}",
-    "rrbclerk":       "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&os=1&testid={test_id}",
-    "rrbpomain":      "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&os=1&testid={test_id}",
-    "rrbclerkmain":   "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&os=1&testid={test_id}",
-    "rrbposectional": "https://u1.oliveboard.in/exams/tests/?c=rrbposectional&os=1&testid={test_id}",
-    "rrbclerksectional": "https://u1.oliveboard.in/exams/tests/?c=rrbclerksectional&os=1&testid={test_id}",
+    "rrbpo":          "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
+    "rrbclerk":       "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
+    "rrbpomain":      "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
+    "rrbclerkmain":   "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&testid={test_id}",
+    "rrbposectional": "https://u1.oliveboard.in/exams/tests/?c=rrbposectional&testid={test_id}",
+    "rrbclerksectional": "https://u1.oliveboard.in/exams/tests/?c=rrbclerksectional&testid={test_id}",
 
     # IBPS PO & Clerk
-    "ibpspo":         "https://u1.oliveboard.in/exams/tests/?c=ibpspo&os=1&testid={test_id}",
-    "ibpspomain":     "https://u1.oliveboard.in/exams/tests/?c=ibpspomain&os=1&testid={test_id}",
-    "ibpsclerk":      "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&os=1&testid={test_id}",
-    "ibpsclerkmain":  "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&os=1&testid={test_id}",
+    "ibpspo":         "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
+    "ibpspomain":     "https://u1.oliveboard.in/exams/tests/?c=ibpspomain&testid={test_id}",
+    "ibpsclerk":      "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
+    "ibpsclerkmain":  "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
 
     # SBI PO & Clerk
-    "sbipo":          "https://u1.oliveboard.in/exams/tests/?c=sbipo&os=1&testid={test_id}",
-    "sbipomain":      "https://u1.oliveboard.in/exams/tests/?c=sbipomain&os=1&testid={test_id}",
-    "sbiclerk":       "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&os=1&testid={test_id}",
-    "sbiclerkmain":   "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&os=1&testid={test_id}",
+    "sbipo":          "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
+    "sbipomain":      "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
+    "sbiclerk":       "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
+    "sbiclerkmain":   "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
 }
 
 
@@ -110,7 +110,7 @@ async def fetch_exam(event):
     file_sol_name = f"solution_exam_{exam}_{test_id}.html"
 
     try:
-        prog = await bot.send_message(event.chat_id, "Fetching Modern Layout Paper…")
+        prog = await bot.send_message(event.chat_id, "Fetching Question Paper…")
 
         # ── 1. Download Question Paper ──
         response = requests.get(url, headers=HEADERS, timeout=30)
@@ -134,7 +134,7 @@ async def fetch_exam(event):
         await event.respond(
             f"📕 Exam Name: {exam}\n"
             f"🆔 Test ID: {test_id}\n"
-            f"🥹 Type: Question (Modern Interface Mode)\n\n"
+            f"🥹 Type: Question (Banking Aura Mode)\n\n"
             "Powered by Banking Aura",
             file=file_name,
         )
@@ -222,7 +222,15 @@ def modify_html(html, full_url):
     if soup.title and soup.title.string:
         soup.title.string = soup.title.string.replace("Oliveboard", "Banking Aura")
 
-    # Disable beforeunload and lock timer to prevent expiry/blank screen bug
+    # Custom CSS Styling Injection
+    custom_injections = soup.new_tag("style")
+    custom_injections.string = """
+        .secgen { cursor: pointer; padding: 5px 10px; margin-right: 5px; background: #e0e0e0; border-radius: 4px; }
+        .currclass { background: #2F72B7 !important; color: #FFF !important; font-weight: bold; }
+    """
+    soup.head.append(custom_injections)
+
+    # Disable beforeunload popup & prevent timer expiry blank screen bug
     fix_script = soup.new_tag("script")
     fix_script.string = """
         window.addEventListener('DOMContentLoaded', (event) => {
@@ -257,5 +265,5 @@ def mody_html(html, full_url):
 
 
 # ─────────────────────────────────────────────
-print("Banking Aura Modern Layout Bot started…")
+print("Banking Aura Test Bot started…")
 bot.run_until_disconnected()
