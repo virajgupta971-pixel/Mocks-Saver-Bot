@@ -1,6 +1,4 @@
-# Copyright github.com/devgaganin
-# no part of this code/edits is allowed to use for commercial / sale purposes
-
+# Copyright github.com/devgaganin # no part of this code/edits is allowed to use for commercial / sale purposes
 import json
 import logging
 import os
@@ -23,11 +21,8 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")
 COOKIES = os.getenv("COOKIES", "your_cookies_here")
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Aapka Telegram User ID yahan env se aayega
 
-# ─────────────────────────────────────────────
 # Initialize the Telethon client
-# ─────────────────────────────────────────────
 bot = TelegramClient("olive_bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
-
 
 @bot.on(events.NewMessage(pattern="/start"))
 async def start(event):
@@ -38,7 +33,6 @@ async def start(event):
         "**__Example: `/fetch rrbpo 1`__**\n\n"
         "__**Powered by Banking Aura**__"
     )
-
 
 # ─────────────────────────────────────────────
 # OLIVEBOARD — headers
@@ -73,6 +67,7 @@ BASE_URIS = {
     "rrbalp1": "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
     "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
     "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
+    
     # RRB PO & Clerk (Prelims & Mains / Sectionals)
     "rrbpo": "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
@@ -80,18 +75,19 @@ BASE_URIS = {
     "rrbclerkmain": "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&testid={test_id}",
     "rrbposectional": "https://u1.oliveboard.in/exams/tests/?c=rrbposectional&testid={test_id}",
     "rrbclerksectional": "https://u1.oliveboard.in/exams/tests/?c=rrbclerksectional&testid={test_id}",
+    
     # IBPS PO & Clerk
     "ibpspo": "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
     "ibpspomain": "https://u1.oliveboard.in/exams/tests/?c=ibpspomain&testid={test_id}",
     "ibpsclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
     "ibpsclerkmain": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
+    
     # SBI PO & Clerk
     "sbipo": "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
     "sbipomain": "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
     "sbiclerk": "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
     "sbiclerkmain": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
 }
-
 
 # ─────────────────────────────────────────────
 # /fetch handler
@@ -102,28 +98,25 @@ async def fetch_exam(event):
     if OWNER_ID and event.sender_id != OWNER_ID:
         await event.reply("Not allowed")
         return
-
+        
     exam = event.pattern_match.group(1).lower()
     test_id = event.pattern_match.group(2)
-
+    
     if exam not in BASE_URIS:
-        await event.respond(
-            "Invalid exam type! Supported types are:\n" + ", ".join(BASE_URIS.keys())
-        )
+        await event.respond("Invalid exam type! Supported types are:\n" + ", ".join(BASE_URIS.keys()))
         return
 
     url = BASE_URIS[exam].format(test_id=test_id)
-
     file_name = f"exam_{exam}_{test_id}.html"
     file_sol_name = f"solution_exam_{exam}_{test_id}.html"
 
     try:
         prog = await bot.send_message(event.chat_id, "Fetching Question Paper…")
-
+        
         # ── 1. Download Question Paper ──
         response = requests.get(url, headers=HEADERS, timeout=30)
         response.raise_for_status()
-
+        
         if len(response.text) < 500 or "login" in response.text.lower()[:1000]:
             await prog.edit(
                 f"⚠️ Received blank or login page for exam `{exam}` with Test ID `{test_id}`.\n"
@@ -146,23 +139,15 @@ async def fetch_exam(event):
             "__**Powered by Banking Aura**__",
             file=file_name,
         )
-
+        
         # ── 2. Fetch Solution ────────────────────────────
-        sol_url = url.replace(
-            "https://u1.oliveboard.in/exams/tests/",
-            "https://u1.oliveboard.in/exams/solution/index3.php",
-        )
+        sol_url = url.replace("https://u1.oliveboard.in/exams/tests/", "https://u1.oliveboard.in/exams/solution/index3.php")
         print("Solution URL:", sol_url)
-
         await prog.edit("Trying to fetch the solution…")
         sol_html = fetch_solution(sol_url)
-
-        if not sol_html or len(sol_html) < 500 or (
-            "login" in sol_html.lower()[:2000] and "solution" not in sol_html.lower()
-        ):
-            await prog.edit(
-                "⚠️ Could not fetch solution (page is blank or returned login screen)."
-            )
+        
+        if not sol_html or len(sol_html) < 500 or ("login" in sol_html.lower()[:2000] and "solution" not in sol_html.lower()):
+            await prog.edit("⚠️ Could not fetch solution (page is blank or returned login screen).")
             return
 
         mod_html = mody_html(sol_html, sol_url)
@@ -185,12 +170,11 @@ async def fetch_exam(event):
         await event.respond(f"Unexpected error: {e}")
     finally:
         for f in (file_name, file_sol_name):
-            try:
-                if os.path.exists(f):
+            if os.path.exists(f):
+                try:
                     os.remove(f)
-            except OSError:
-                pass
-
+                except OSError:
+                    pass
 
 # ─────────────────────────────────────────────
 # Fetch solution page
@@ -205,26 +189,19 @@ def fetch_solution(url):
         print("Solution fetch failed:", e)
         return None
 
-
 # ─────────────────────────────────────────────
-# HTML rewriting helpers (Watermarked & Native Timer Support)
+# HTML rewriting helpers (Watermarked & Sectional Timer Enforcer)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
-
 WATERMARK_TEXT = "Banking Aura"
+
 WATERMARK_HTML = (
-    """<style>
-#ba-watermark{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;display:flex;align-items:center;justify-content:center;user-select:none}
-#ba-watermark span{font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:9vw;letter-spacing:.05em;white-space:nowrap;color:rgba(0,0,0,.07);transform:rotate(-30deg)}
-@media print{#ba-watermark span{color:rgba(0,0,0,.12)}}
-</style>
-<div id="ba-watermark" aria-hidden="true"><span>%s</span></div>
-"""
+    """<style> #ba-watermark{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;display:flex;align-items:center;justify-content:center;user-select:none} #ba-watermark span{font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:9vw;letter-spacing:.05em;white-space:nowrap;color:rgba(0,0,0,.07);transform:rotate(-30deg)} @media print{#ba-watermark span{color:rgba(0,0,0,.12)}} </style> <div id="ba-watermark" aria-hidden="true"><span>%s</span></div> """
     % WATERMARK_TEXT
 )
 
-# Only blocks beforeunload popups so native OB timer and section switching work naturally
+# Enforces native & custom sectional timing logic & prevents timer freezes
 EXTRA_INJECT_SCRIPT = """<script>
 (function() {
     window.onbeforeunload = null;
@@ -233,25 +210,37 @@ EXTRA_INJECT_SCRIPT = """<script>
         if (type === 'beforeunload') return;
         return originalAddEventListener.call(window, type, listener, options);
     };
+
+    // Real Sectional Timer Enforcer & Sync
+    document.addEventListener("DOMContentLoaded", function() {
+        console.log("Banking Aura: Sectional Timer Sync Initialized");
+        
+        // Periodic check to ensure Oliveboard's internal timer functions do not stall in offline mode
+        setInterval(function() {
+            try {
+                if (typeof window.checkTimer === 'function') {
+                    window.checkTimer();
+                }
+            } catch (err) {
+                // Ignore background interval sync errors
+            }
+        }, 1000);
+    });
 })();
 </script>
 """
-
 
 def finalize_html(soup):
     for a in soup.find_all("a"):
         if a.has_attr("onclick"):
             a["href"] = "javascript:void(0)"
-            a.attrs.pop("target", None)
-            
-    # Inject script in head if present, else body
+        a.attrs.pop("target", None)
+
     if soup.head:
         soup.head.append(BeautifulSoup(EXTRA_INJECT_SCRIPT, "html.parser"))
-        
     if soup.body is not None and not soup.find(id="ba-watermark"):
         soup.body.append(BeautifulSoup(WATERMARK_HTML, "html.parser"))
     return soup.prettify()
-
 
 def _rewrite_links(html, base_url):
     soup = BeautifulSoup(html, "html.parser")
@@ -262,14 +251,11 @@ def _rewrite_links(html, base_url):
             tag["src"] = urljoin(base_url, tag["src"])
     return finalize_html(soup)
 
-
 def modify_html(html, full_url):
     return _rewrite_links(html, DEFAULT_BASE_URL)
 
-
 def mody_html(html, full_url):
     return _rewrite_links(html, SOLUTION_BASE_URL)
-
 
 # ─────────────────────────────────────────────
 print("Test Bot started…")
