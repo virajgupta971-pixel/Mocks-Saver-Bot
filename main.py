@@ -1,19 +1,27 @@
 # Copyright github.com/devgaganin
 # no part of this code/edits is allowed to use for commercial / sale purposes
 
+import json
+import logging
 import os
-import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 from telethon import TelegramClient, events
+from urllib.parse import urljoin
+import requests
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 # ─────────────────────────────────────────────
 # CONFIGURATION (Railway Environment Variables)
 # ─────────────────────────────────────────────
-API_ID = int(os.getenv("API_ID", "1234567"))          
-API_HASH = os.getenv("API_HASH", "your_api_hash")     
-BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")  
-COOKIES = os.getenv("COOKIES", "your_cookies_here")   
+API_ID = int(os.getenv("API_ID", "1234567"))
+API_HASH = os.getenv("API_HASH", "your_api_hash")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")
+COOKIES = os.getenv("COOKIES", "your_cookies_here")
+OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Aapka Telegram User ID yahan env se aayega
 
 # ─────────────────────────────────────────────
 # Initialize the Telethon client
@@ -25,12 +33,10 @@ bot = TelegramClient("olive_bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 async def start(event):
     """Handle /start command"""
     await event.reply(
-        "Welcome to the Mock Extractor Bot!\n\n"
+        "**Welcome to the Mock Extractor Bot!**\n\n"
         "Send `/fetch exam testid` for oliveboard\n\n"
-        "Example: /fetch rrbpo 1\n"
-        "Example: /fetch rrbclerk 1\n"
-        "Example: /fetch rrbpomain 1\n\n"
-        "Powered by Team SPY"
+        "**__Example: `/fetch rrbpo 1`__**\n\n"
+        "__**Powered by Banking Aura**__"
     )
 
 
@@ -55,39 +61,78 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# Comprehensive Category Slugs (Prelims uses 'ibpsrrbscp' for RRB, Mains and others have specific slugs)
+# Comprehensive Category Slugs
 BASE_URIS = {
     # SSC & Railway
-    "cgl1":           "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
-    "chsl":           "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
-    "chsl2":          "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
-    "sscmts":         "https://u1.oliveboard.in/exams/tests/?c=sscmts&testid={test_id}",
-    "ntpc1":          "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
-    "ntpc2":          "https://u1.oliveboard.in/exams/tests/?c=ntpc2&os=1&testid={test_id}",
-    "rrbalp1":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
-    "rrbalp2":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
-    "rrbgrpd":        "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
-    
+    "cgl1": "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
+    "chsl": "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
+    "chsl2": "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
+    "sscmts": "https://u1.oliveboard.in/exams/tests/?c=sscmts&testid={test_id}",
+    "ntpc1": "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
+    "ntpc2": "https://u1.oliveboard.in/exams/tests/?c=ntpc2&os=1&testid={test_id}",
+    "rrbalp1": "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
+    "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
+    "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
     # RRB PO & Clerk (Prelims & Mains / Sectionals)
-    "rrbpo":          "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
-    "rrbclerk":       "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
-    "rrbpomain":      "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
-    "rrbclerkmain":   "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&testid={test_id}",
+    "rrbpo": "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
+    "rrbclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
+    "rrbpomain": "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
+    "rrbclerkmain": "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&testid={test_id}",
     "rrbposectional": "https://u1.oliveboard.in/exams/tests/?c=rrbposectional&testid={test_id}",
     "rrbclerksectional": "https://u1.oliveboard.in/exams/tests/?c=rrbclerksectional&testid={test_id}",
-
     # IBPS PO & Clerk
-    "ibpspo":         "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
-    "ibpspomain":     "https://u1.oliveboard.in/exams/tests/?c=ibpspomain&testid={test_id}",
-    "ibpsclerk":      "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
-    "ibpsclerkmain":  "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
-
+    "ibpspo": "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
+    "ibpspomain": "https://u1.oliveboard.in/exams/tests/?c=ibpspomain&testid={test_id}",
+    "ibpsclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
+    "ibpsclerkmain": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
     # SBI PO & Clerk
-    "sbipo":          "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
-    "sbipomain":      "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
-    "sbiclerk":       "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
-    "sbiclerkmain":   "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
+    "sbipo": "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
+    "sbipomain": "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
+    "sbiclerk": "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
+    "sbiclerkmain": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
 }
+
+
+# ─────────────────────────────────────────────
+# Dynamic HTML Template Generator (Banking Aura)
+# ─────────────────────────────────────────────
+def generate_oliveboard_template(test_qpid, sec_list, sec_tracker, questions_data):
+    """Generates a clean, structured HTML template for Oliveboard test interface
+
+    injecting dynamic test data and custom layout.
+    """
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Test Interface - Banking Aura</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f6f9; }}
+        .container {{ max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
+        .header {{ font-size: 22px; font-weight: bold; margin-bottom: 15px; color: #333; }}
+        .section-bar {{ display: flex; gap: 10px; margin-bottom: 20px; }}
+        .sec-btn {{ padding: 8px 15px; background: #e0e0e0; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }}
+        .sec-btn.active {{ background: #007bff; color: white; }}
+        .question-box {{ border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 15px; }}
+        .options-list {{ list-style-type: none; padding: 0; }}
+        .options-list li {{ margin: 8px 0; padding: 8px; background: #f9f9f9; border: 1px solid #eee; border-radius: 3px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">Banking Aura - Test ID: <span id="qpid">{test_qpid}</span></div>
+        <div class="section-bar" id="secList"></div>
+        <div class="question-box" id="questionContainer"></div>
+    </div>
+    <script>
+        const testQpid = "{test_qpid}";
+        const secList = {json.dumps(sec_list)};
+        const secTracker = {json.dumps(sec_tracker)};
+        const questionsData = {json.dumps(questions_data)};
+    </script>
+</body>
+</html>
+"""
 
 
 # ─────────────────────────────────────────────
@@ -95,7 +140,12 @@ BASE_URIS = {
 # ─────────────────────────────────────────────
 @bot.on(events.NewMessage(pattern=r"/fetch (\w+) (\d+)"))
 async def fetch_exam(event):
-    exam    = event.pattern_match.group(1).lower()
+    # Owner restriction check
+    if OWNER_ID and event.sender_id != OWNER_ID:
+        await event.reply("Not allowed")
+        return
+
+    exam = event.pattern_match.group(1).lower()
     test_id = event.pattern_match.group(2)
 
     if exam not in BASE_URIS:
@@ -106,13 +156,13 @@ async def fetch_exam(event):
 
     url = BASE_URIS[exam].format(test_id=test_id)
 
-    file_name     = f"exam_{exam}_{test_id}.html"
+    file_name = f"exam_{exam}_{test_id}.html"
     file_sol_name = f"solution_exam_{exam}_{test_id}.html"
 
     try:
         prog = await bot.send_message(event.chat_id, "Fetching Question Paper…")
 
-        # ── 1. Download Question Paper (Natural Locked State) ──
+        # ── 1. Download Question Paper ──
         response = requests.get(url, headers=HEADERS, timeout=30)
         response.raise_for_status()
 
@@ -132,10 +182,10 @@ async def fetch_exam(event):
 
         await prog.edit("Uploading Test Papers…")
         await event.respond(
-            f"📕 Exam Name: {exam}\n"
-            f"🆔 Test ID: {test_id}\n"
-            f"🥹 Type: Question (Locked Sections Mode)\n\n"
-            "Powered by Team SPY",
+            f"**📕 Exam Name: {exam}**\n"
+            f"**🆔 Test ID: {test_id}**\n"
+            f"**🥹 Type: Question**\n\n"
+            "__**Powered by Banking Aura**__",
             file=file_name,
         )
 
@@ -149,8 +199,12 @@ async def fetch_exam(event):
         await prog.edit("Trying to fetch the solution…")
         sol_html = fetch_solution(sol_url)
 
-        if not sol_html or len(sol_html) < 500 or ("login" in sol_html.lower()[:2000] and "solution" not in sol_html.lower()):
-            await prog.edit("⚠️ Could not fetch solution (page is blank or returned login screen).")
+        if not sol_html or len(sol_html) < 500 or (
+            "login" in sol_html.lower()[:2000] and "solution" not in sol_html.lower()
+        ):
+            await prog.edit(
+                "⚠️ Could not fetch solution (page is blank or returned login screen)."
+            )
             return
 
         mod_html = mody_html(sol_html, sol_url)
@@ -159,10 +213,10 @@ async def fetch_exam(event):
 
         await prog.edit("Uploading Solution…")
         await event.respond(
-            f"📕 Exam Name: {exam}\n"
-            f"🆔 Test ID: {test_id}\n"
-            f"🥹 Type: Solution\n\n"
-            "Powered by Team SPY",
+            f"**📕 Exam Name: {exam}**\n"
+            f"**🆔 Test ID: {test_id}**\n"
+            f"**🥹 Type: Solution**\n\n"
+            "__**Powered by Banking Aura**__",
             file=file_sol_name,
         )
         await prog.delete()
@@ -195,10 +249,50 @@ def fetch_solution(url):
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers
+# HTML rewriting helpers (Watermarked & No-Unload)
 # ─────────────────────────────────────────────
-DEFAULT_BASE_URL  = "https://u1.oliveboard.in/exams/tests/"
+DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
+
+WATERMARK_TEXT = "Banking Aura"
+WATERMARK_HTML = (
+    """<style>
+#ba-watermark{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;display:flex;align-items:center;justify-content:center;user-select:none}
+#ba-watermark span{font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:9vw;letter-spacing:.05em;white-space:nowrap;color:rgba(0,0,0,.07);transform:rotate(-30deg)}
+@media print{#ba-watermark span{color:rgba(0,0,0,.12)}}
+</style>
+<div id="ba-watermark" aria-hidden="true"><span>%s</span></div>
+"""
+    % WATERMARK_TEXT
+)
+
+# Yeh script 'Leave site?' wale pop-up ko block kar degi
+NO_UNLOAD_SCRIPT = """<script>
+(function() {
+    window.onbeforeunload = null;
+    const originalAddEventListener = window.addEventListener;
+    window.addEventListener = function(type, listener, options) {
+        if (type === 'beforeunload') return;
+        return originalAddEventListener.call(window, type, listener, options);
+    };
+})();
+</script>
+"""
+
+
+def finalize_html(soup):
+    for a in soup.find_all("a"):
+        if a.has_attr("onclick"):
+            a["href"] = "javascript:void(0)"
+            a.attrs.pop("target", None)
+            
+    # Inject no-unload script in head if present, else body
+    if soup.head:
+        soup.head.append(BeautifulSoup(NO_UNLOAD_SCRIPT, "html.parser"))
+        
+    if soup.body is not None and not soup.find(id="ba-watermark"):
+        soup.body.append(BeautifulSoup(WATERMARK_HTML, "html.parser"))
+    return soup.prettify()
 
 
 def _rewrite_links(html, base_url):
@@ -208,7 +302,7 @@ def _rewrite_links(html, base_url):
             tag["href"] = urljoin(base_url, tag["href"])
         if tag.has_attr("src") and not tag["src"].startswith("http"):
             tag["src"] = urljoin(base_url, tag["src"])
-    return soup.prettify()
+    return finalize_html(soup)
 
 
 def modify_html(html, full_url):
