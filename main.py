@@ -21,7 +21,7 @@ API_ID = int(os.getenv("API_ID", "1234567"))
 API_HASH = os.getenv("API_HASH", "your_api_hash")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")
 COOKIES = os.getenv("COOKIES", "your_cookies_here")
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Telegram User ID
+OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Aapka Telegram User ID yahan env se aayega
 
 # ─────────────────────────────────────────────
 # Initialize the Telethon client
@@ -61,7 +61,7 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# Comprehensive Category Slugs
+# Comprehensive Category Slugs (including rrbposecpre)
 BASE_URIS = {
     # SSC & Railway
     "cgl1": "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
@@ -73,7 +73,8 @@ BASE_URIS = {
     "rrbalp1": "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
     "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
     "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
-    # RRB PO & Clerk (Prelims & Mains / Sectionals)
+    # RRB PO & Clerk (Prelims, Mains, Sectionals & Pre-Sectionals)
+    "rrbposecpre": "https://u1.oliveboard.in/exams/tests/?c=rrbposecpre&testid={test_id}",
     "rrbpo": "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbpomain": "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
@@ -207,7 +208,7 @@ def fetch_solution(url):
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers (Watermarked & Section Lock Injected)
+# HTML rewriting helpers (Watermarked, No-Unload & Strict Section Lock)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
@@ -224,10 +225,10 @@ WATERMARK_HTML = (
     % WATERMARK_TEXT
 )
 
-# Strictly Section Locking & Sequential Progression Script
+# Yeh script popup block karegi aur Oliveboard ke section-lock / shiftSection ko control karegi
 EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
 (function() {
-    // 1. Block 'Leave site?' popup
+    // 1. Block beforeunload popup
     window.onbeforeunload = null;
     const originalAddEventListener = window.addEventListener;
     window.addEventListener = function(type, listener, options) {
@@ -235,12 +236,11 @@ EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
         return originalAddEventListener.call(window, type, listener, options);
     };
 
-    // 2. Section Locking Engine
+    // 2. Strict Section Locking & Progression Logic
     window.currentUnlockedSection = 0;
 
-    document.addEventListener("DOMContentLoaded", function() {
-        
-        // Override shiftSection to restrict navigation to locked sections
+    window.addEventListener('load', function() {
+        // Intercept shiftSection to block unauthorized tab jumping
         if (typeof window.shiftSection === 'function') {
             var originalShiftSection = window.shiftSection;
             window.shiftSection = function(sid) {
@@ -252,7 +252,7 @@ EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
             };
         }
 
-        // Override sendData / Section Submit to unlock the next section
+        // Intercept sendData (Next Section / Submit) to unlock subsequent section
         if (typeof window.sendData === 'function') {
             var originalSendData = window.sendData;
             window.sendData = function() {
@@ -267,27 +267,23 @@ EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
             };
         }
 
-        # 3. Dynamic UI Update for Locked Section Tabs
+        // Visual dimming and locking of tabs dynamically
         setInterval(function() {
-            if (typeof secList !== 'undefined' && Array.isArray(secList)) {
-                secList.forEach(function(sec, index) {
-                    var tabElem = document.getElementById("sec_tab_" + index) || 
-                                  document.getElementById("section_" + index) ||
-                                  document.querySelector('[data-secid="' + index + '"]');
-                    if (tabElem) {
-                        if (index > window.currentUnlockedSection) {
-                            tabElem.style.opacity = "0.4";
-                            tabElem.style.pointerEvents = "none";
-                            tabElem.title = "🔒 Section Locked";
-                        } else {
-                            tabElem.style.opacity = "1";
-                            tabElem.style.pointerEvents = "auto";
-                            tabElem.title = "";
-                        }
+            for (var i = 0; i < 10; i++) {
+                var tab = document.getElementById("sec-e" + i);
+                if (tab) {
+                    if (i > window.currentUnlockedSection) {
+                        tab.style.opacity = "0.4";
+                        tab.style.cursor = "not-allowed";
+                        tab.title = "Locked Section";
+                    } else {
+                        tab.style.opacity = "1";
+                        tab.style.cursor = "pointer";
+                        tab.title = "";
                     }
-                });
+                }
             }
-        }, 800);
+        }, 500);
     });
 })();
 </script>
