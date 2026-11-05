@@ -7,6 +7,7 @@ from telethon.tl.types import InputFile
 from config import API_ID, API_HASH, BOT_TOKEN, COOKIES, OWNER_ID
 import re
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 # Initialize the Telethon client
 bot = TelegramClient("olive_bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
@@ -42,7 +43,6 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-
 # Base URIs for different exam types
 BASE_URIS = {
     "cgl1": "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
@@ -54,7 +54,7 @@ BASE_URIS = {
     "rrbalp1": "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
     "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
     "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
-# Banking Exams Added
+    # Banking Exams Added
     "ibpspo":    "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
     "ibpsclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
     "sbipo":     "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
@@ -63,11 +63,9 @@ BASE_URIS = {
     "rrbclerk":  "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
 }
 
-
 # ─────────────────────────────────────────────
 # /fetch handler
 # ─────────────────────────────────────────────
-}
 @bot.on(events.NewMessage(pattern=r"/fetch (\w+) (\d+)"))
 async def fetch_exam(event):
     """Fetches test details based on the exam type and test ID."""
@@ -84,6 +82,9 @@ async def fetch_exam(event):
     # Construct the URL
     url = BASE_URIS[exam].format(test_id=test_id)
 
+    file_name = f"exam_{exam}_{test_id}.html"
+    file_sol_name = f"solution_exam_{exam}_{test_id}.html"
+
     try:
         # Fetch the HTML content
         response = requests.get(url, headers=HEADERS)
@@ -93,7 +94,6 @@ async def fetch_exam(event):
         modified_html = modify_html(html_content, url)
 
         # Save the modified HTML to a file
-        file_name = f"exam_{exam}_{test_id}.html"
         with open(file_name, "w", encoding="utf-8") as file:
             file.write(modified_html)
 
@@ -102,16 +102,17 @@ async def fetch_exam(event):
         # Send the file back to the user
         await prog.edit("Uploading Test Papers... ")
         await event.respond(f"**📕 Exam Name: {exam}**\n**🆔 Test ID: {test_id}**\n**✅ Type: Question**\n\n__**Powered by @Dark_V1rus**__", file=file_name)
+        
         await prog.edit("Auto Submitting the test")
-        submit_test(url)
-        await prog.edit("Test Submitted Sucessfully... ")
+        submit_test(url, test_id, exam)
+        await prog.edit("Test Submitted Successfully... ")
+        
         t = url.replace("https://u1.oliveboard.in/exams/tests/", "https://u1.oliveboard.in/exams/solution/index3.php")
         print(t)
         k = fetch_solution(t)
         await prog.edit("Trying to fetch the solution... ")
         mod_html = mody_html(k, url)
 
-        file_sol_name = f"solution_exam_{exam}_{test_id}.html"
         with open(file_sol_name, "w", encoding="utf-8") as file:
             file.write(mod_html)
 
@@ -119,12 +120,16 @@ async def fetch_exam(event):
         await event.respond(f"**📕 Exam Name: {exam}**\n**🆔 Test ID: {test_id}**\n**✅ Type: Solution**\n\n__**Powered by Banking Aura@Dark_V1rus**__", file=file_sol_name)
         await prog.delete()
 
-        os.remove(file_name)
-        if file_sol_name:
-            os.remove(file_sol_name)
-
     except requests.exceptions.RequestException as e:
         await event.respond(f"Failed to fetch the test details: {e}")
+    finally:
+        # Clean up files safely
+        for f in [file_name, file_sol_name]:
+            if os.path.exists(f):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
 
 def submit_test(url, test_id, exam):
     surl = "https://u1.oliveboard.in/exams/tests/p/submittestfull.cgi"
@@ -147,14 +152,12 @@ def submit_test(url, test_id, exam):
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": "\"Windows\"",
     }
-    # Formatting q as "test_id001"
     q_value = f"{test_id}001"
     print(q_value)
     raw_data = f"data=%7B%22{q_value}001%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2201%3A30%3A00%22%2C%22end%22%3A%2201%3A29%3A58%22%7D%5D%2C%22o%22%3A%22%22%7D%2C%22{q_value}002%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A57%22%2C%22end%22%3A%2200%3A59%3A53%22%7D%5D%2C%22o%22%3A%221%22%7D%2C%22{q_value}003%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A53%22%2C%22end%22%3A%2200%3A59%3A47%22%7D%5D%2C%22o%22%3A%22%22%7D%2C%22{q_value}004%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A47%22%2C%22end%22%3A%2200%3A59%3A46%22%7D%2C%7B%22st%22%3A%2200%3A59%3A46%22%2C%22end%22%3A%2200%3A59%3A43%22%7D%5D%2C%22o%22%3A%22%22%7D%7D&uid=&qpi={test_id}&ppi=-1&lang=eqt&c={exam}&source=web"
-    print(payload)
+    
     response = requests.post(surl, headers=headers, data=raw_data)
     print(f"Test Submission Response Status Code: {response.status_code}")
-
 
 # Step 2: Fetch Solution
 def fetch_solution(url):
@@ -180,10 +183,8 @@ def fetch_solution(url):
     print(f"Solution Fetch Response Status Code: {response.status_code}")
     return html_content
 
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-
 DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
+SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
 
 WATERMARK_TEXT = "BANKING AURA"
 WATERMARK_HTML = """<style>
@@ -195,7 +196,7 @@ WATERMARK_HTML = """<style>
 """ % WATERMARK_TEXT
 
 def finalize_html(soup):
-    """Fix button links (they must not navigate/open a new tab) and add the watermark."""
+    """Fix button links and add the watermark."""
     for a in soup.find_all("a"):
         if a.has_attr("onclick"):
             a["href"] = "javascript:void(0)"
@@ -205,46 +206,21 @@ def finalize_html(soup):
     return soup.prettify()
 
 def modify_html(html, full_url):
-    """
-    Modifies the HTML content by appending the appropriate base URL
-    to relative links for 'href' and 'src' attributes.
-    """
     soup = BeautifulSoup(html, "html.parser")
-
     for tag in soup.find_all(["a", "img", "link", "script"]):
-        # Handle 'href' attribute for <a> and <link> tags
-        if tag.has_attr("href"):
-            if not tag["href"].startswith("http"):  # Only modify relative links
-                tag["href"] = urljoin(DEFAULT_BASE_URL, tag["href"])
-
-        # Handle 'src' attribute for <img> and <script> tags
-        if tag.has_attr("src"):
-            if not tag["src"].startswith("http"):  # Only modify relative sources
-                tag["src"] = urljoin(DEFAULT_BASE_URL, tag["src"])
-
+        if tag.has_attr("href") and not tag["href"].startswith("http"):
+            tag["href"] = urljoin(DEFAULT_BASE_URL, tag["href"])
+        if tag.has_attr("src") and not tag["src"].startswith("http"):
+            tag["src"] = urljoin(DEFAULT_BASE_URL, tag["src"])
     return finalize_html(soup)
 
-
-SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
-
 def mody_html(html, full_url):
-    """
-    Modifies the HTML content by appending the appropriate base URL
-    to relative links for 'href' and 'src' attributes.
-    """
     soup = BeautifulSoup(html, "html.parser")
-
     for tag in soup.find_all(["a", "img", "link", "script"]):
-        # Handle 'href' attribute for <a> and <link> tags
-        if tag.has_attr("href"):
-            if not tag["href"].startswith("http"):  # Only modify relative links
-                tag["href"] = urljoin(SOLUTION_BASE_URL, tag["href"])
-
-        # Handle 'src' attribute for <img> and <script> tags
-        if tag.has_attr("src"):
-            if not tag["src"].startswith("http"):  # Only modify relative sources
-                tag["src"] = urljoin(SOLUTION_BASE_URL, tag["src"])
-
+        if tag.has_attr("href") and not tag["href"].startswith("http"):
+            tag["href"] = urljoin(SOLUTION_BASE_URL, tag["href"])
+        if tag.has_attr("src") and not tag["src"].startswith("http"):
+            tag["src"] = urljoin(SOLUTION_BASE_URL, tag["src"])
     return finalize_html(soup)
 
 # Run the bot
