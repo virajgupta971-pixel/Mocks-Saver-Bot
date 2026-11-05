@@ -26,16 +26,16 @@ async def start(event):
     """Handle /start command"""
     await event.reply(
         "Welcome to the Mock Extractor Bot!\n\n"
-        "Send `/fetch exam testid` for oliveboard\n\n"
+        "Send `/fetch exam testid` for mock papers\n\n"
         "Example: /fetch rrbpo 1\n"
         "Example: /fetch rrbclerk 1\n"
         "Example: /fetch rrbpomain 1\n\n"
-        "Powered by BANKING AURA"
+        "Powered by Banking Aura & Team SPY"
     )
 
 
 # ─────────────────────────────────────────────
-# OLIVEBOARD — headers
+# MOCK PLATFORM — headers
 # ─────────────────────────────────────────────
 HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -55,7 +55,7 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# Comprehensive Category Slugs (Prelims uses 'ibpsrrbscp' for RRB, Mains and others have specific slugs)[span_3](start_span)[span_3](end_span)
+# Comprehensive Category Slugs (Prelims uses 'ibpsrrbscp' for RRB, Mains and others have specific slugs)[span_2](start_span)[span_2](end_span)
 BASE_URIS = {
     # SSC & Railway
     "cgl1":           "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
@@ -68,7 +68,7 @@ BASE_URIS = {
     "rrbalp2":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
     "rrbgrpd":        "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
     
-    # RRB PO & Clerk (Prelims & Mains / Sectionals)[span_4](start_span)[span_4](end_span)
+    # RRB PO & Clerk (Prelims & Mains / Sectionals)[span_3](start_span)[span_3](end_span)
     "rrbpo":          "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbclerk":       "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbpomain":      "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
@@ -112,7 +112,7 @@ async def fetch_exam(event):
     try:
         prog = await bot.send_message(event.chat_id, "Fetching Question Paper…")
 
-        # ── 1. Download Question Paper (Natural Locked State) ──
+        # ── 1. Download Question Paper ──
         response = requests.get(url, headers=HEADERS, timeout=30)
         response.raise_for_status()
 
@@ -134,8 +134,8 @@ async def fetch_exam(event):
         await event.respond(
             f"📕 Exam Name: {exam}\n"
             f"🆔 Test ID: {test_id}\n"
-            f"🥹 Type: Question (Locked Sections Mode)\n\n"
-            "Powered by BANKING AURA",
+            f"🥹 Type: Question (Banking Aura Mode)\n\n"
+            "Powered by Banking Aura",
             file=file_name,
         )
 
@@ -162,7 +162,7 @@ async def fetch_exam(event):
             f"📕 Exam Name: {exam}\n"
             f"🆔 Test ID: {test_id}\n"
             f"🥹 Type: Solution\n\n"
-            "Powered by BANKING AURA",
+            "Powered by Banking Aura",
             file=file_sol_name,
         )
         await prog.delete()
@@ -195,7 +195,7 @@ def fetch_solution(url):
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers
+# HTML rewriting helpers (Branding -> Banking Aura)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL  = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
@@ -208,20 +208,21 @@ def _rewrite_links(html, base_url):
             tag["href"] = urljoin(base_url, tag["href"])
         if tag.has_attr("src") and not tag["src"].startswith("http"):
             tag["src"] = urljoin(base_url, tag["src"])
-    return soup.prettify()
+    return soup
 
 
 def modify_html(html, full_url):
-    soup = BeautifulSoup(html, "html.parser")
+    soup = _rewrite_links(html, DEFAULT_BASE_URL)
     
-    # 1. Links fix
-    for tag in soup.find_all(["a", "img", "link", "script"]):
-        if tag.has_attr("href") and not tag["href"].startswith("http"):
-            tag["href"] = urljoin(DEFAULT_BASE_URL, tag["href"])
-        if tag.has_attr("src") and not tag["src"].startswith("http"):
-            tag["src"] = urljoin(DEFAULT_BASE_URL, tag["src"])
-            
-    # 2. Custom CSS injection for classic layout optimization
+    # Replace branding text
+    for text_node in soup.find_all(text=True):
+        if "Oliveboard" in text_node:
+            text_node.replace_with(text_node.replace("Oliveboard", "Banking Aura"))
+
+    if soup.title and soup.title.string:
+        soup.title.string = soup.title.string.replace("Oliveboard", "Banking Aura")
+
+    # Custom CSS Styling Injection
     custom_injections = soup.new_tag("style")
     custom_injections.string = """
         .secgen { cursor: pointer; padding: 5px 10px; margin-right: 5px; background: #e0e0e0; border-radius: 4px; }
@@ -233,9 +234,18 @@ def modify_html(html, full_url):
 
 
 def mody_html(html, full_url):
-    return _rewrite_links(html, SOLUTION_BASE_URL)
+    soup = _rewrite_links(html, SOLUTION_BASE_URL)
+    
+    for text_node in soup.find_all(text=True):
+        if "Oliveboard" in text_node:
+            text_node.replace_with(text_node.replace("Oliveboard", "Banking Aura"))
+
+    if soup.title and soup.title.string:
+        soup.title.string = soup.title.string.replace("Oliveboard", "Banking Aura")
+
+    return soup.prettify()
 
 
 # ─────────────────────────────────────────────
-print("Test Bot started…")
+print("Banking Aura Test Bot started…")
 bot.run_until_disconnected()
