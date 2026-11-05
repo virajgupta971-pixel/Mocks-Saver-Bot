@@ -55,7 +55,7 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# Classic Category Slugs (Ensures full question bundle is downloaded)
+# Category Slugs (Ensures full question bundle is downloaded)
 BASE_URIS = {
     # SSC & Railway
     "cgl1":           "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
@@ -68,7 +68,7 @@ BASE_URIS = {
     "rrbalp2":        "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&testid={test_id}",
     "rrbgrpd":        "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&testid={test_id}",
     
-    # RRB PO & Clerk (Prelims & Mains / Sectionals)[span_1](start_span)[span_1](end_span)
+    # RRB PO & Clerk (Prelims & Mains / Sectionals)
     "rrbpo":          "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbclerk":       "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbpomain":      "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
@@ -134,7 +134,7 @@ async def fetch_exam(event):
         await event.respond(
             f"📕 Exam Name: {exam}\n"
             f"🆔 Test ID: {test_id}\n"
-            f"🥹 Type: Question (Banking Aura Mode)\n\n"
+            f"🥹 Type: Question (Banking Aura Classic Mode)\n\n"
             "Powered by Banking Aura",
             file=file_name,
         )
@@ -144,7 +144,6 @@ async def fetch_exam(event):
             "https://u1.oliveboard.in/exams/tests/",
             "https://u1.oliveboard.in/exams/solution/index3.php",
         )
-        print("Solution URL:", sol_url)
 
         await prog.edit("Trying to fetch the solution…")
         sol_html = fetch_solution(sol_url)
@@ -187,15 +186,13 @@ def fetch_solution(url):
     headers = dict(HEADERS)
     try:
         response = requests.get(url, headers=headers, timeout=30)
-        print("Solution fetch status:", response.status_code)
         return response.text
     except requests.exceptions.RequestException as e:
-        print("Solution fetch failed:", e)
         return None
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers
+# HTML REWRITER & ENGINE INJECTION (Banking Aura)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL  = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
@@ -214,7 +211,7 @@ def _rewrite_links(html, base_url):
 def modify_html(html, full_url):
     soup = _rewrite_links(html, DEFAULT_BASE_URL)
     
-    # Replace branding text
+    # 1. Branding Text Replacement
     for text_node in soup.find_all(text=True):
         if "Oliveboard" in text_node:
             text_node.replace_with(text_node.replace("Oliveboard", "Banking Aura"))
@@ -222,28 +219,50 @@ def modify_html(html, full_url):
     if soup.title and soup.title.string:
         soup.title.string = soup.title.string.replace("Oliveboard", "Banking Aura")
 
-    # Custom CSS Styling Injection
-    custom_injections = soup.new_tag("style")
-    custom_injections.string = """
+    # 2. Watermark & Pallet Styling CSS Injection
+    custom_css = soup.new_tag("style")
+    custom_css.string = """
         .secgen { cursor: pointer; padding: 5px 10px; margin-right: 5px; background: #e0e0e0; border-radius: 4px; }
         .currclass { background: #2F72B7 !important; color: #FFF !important; font-weight: bold; }
+        
+        /* Banking Aura Watermark Styling */
+        #ba-watermark { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; overflow: hidden; display: flex; align-items: center; justify-content: center; user-select: none; }
+        #ba-watermark span { font-family: Arial, Helvetica, sans-serif; font-weight: 800; font-size: 9vw; letter-spacing: .05em; white-space: nowrap; color: rgba(0,0,0,.07); transform: rotate(-30deg); }
+        @media print { #ba-watermark span { color: rgba(0,0,0,.12); } }
     """
-    soup.head.append(custom_injections)
+    soup.head.append(custom_css)
 
-    # Disable beforeunload popup & prevent timer expiry blank screen bug
+    # 3. Watermark Body Element Injection
+    watermark_div = soup.new_tag("div", id="ba-watermark", **{"aria-hidden": "true"})
+    wm_span = soup.new_tag("span")
+    wm_span.string = "BANKING AURA"
+    watermark_div.append(wm_span)
+    soup.body.append(watermark_div)
+
+    # 4. Engine Fixes: Disable popup, lock timer & force section view
     fix_script = soup.new_tag("script")
     fix_script.string = """
         window.addEventListener('DOMContentLoaded', (event) => {
+            // Disable 'Leave site' warning
             window.onbeforeunload = null;
+            
+            // Lock Timer variables to prevent 00:00 blank screen bug
             setInterval(function() {
                 if (typeof totalTime !== 'undefined') { totalTime = 999999; }
                 var hr = document.getElementById('hour');
                 var min = document.getElementById('mins');
                 var sec = document.getElementById('secs');
-                if (hr) hr.innerHTML = "02";
-                if (min) min.innerHTML = "30";
+                if (hr) hr.innerHTML = "00";
+                if (min) min.innerHTML = "25";
                 if (sec) sec.innerHTML = "00";
             }, 1000);
+
+            // Force load first section on start
+            setTimeout(function() {
+                if (typeof shiftSection === 'function') {
+                    shiftSection(0);
+                }
+            }, 600);
         });
     """
     soup.body.append(fix_script)
@@ -265,5 +284,5 @@ def mody_html(html, full_url):
 
 
 # ─────────────────────────────────────────────
-print("Banking Aura Test Bot started…")
+print("Banking Aura Classic Engine Bot started…")
 bot.run_until_disconnected()
