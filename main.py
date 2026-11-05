@@ -1,13 +1,14 @@
-# Copyright github.com/devgaganin # no part of this code/edits is allowed to use for commercial / sale purposes
-import json
-import logging
+# Copyright github.com/devgaganin
+# no part of this code/edits is allowed to use for commercial / sale purposes
+
 import os
-from bs4 import BeautifulSoup
+import requests
 from telethon import TelegramClient, events
 from urllib.parse import urljoin
-import requests
+from bs4 import BeautifulSoup
 
 # Configure logging
+import logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -197,26 +198,30 @@ WATERMARK_TEXT = "BANKING AURA"
 
 WATERMARK_HTML = """<style> #ba-watermark{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;display:flex;align-items:center;justify-content:center;user-select:none} #ba-watermark span{font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:9vw;letter-spacing:.05em;white-space:nowrap;color:rgba(0,0,0,.07);transform:rotate(-30deg)} @media print{#ba-watermark span{color:rgba(0,0,0,.12)}} </style> <div id="ba-watermark" aria-hidden="true"><span>%s</span></div> """ % WATERMARK_TEXT
 
-# Injection script targeting Oliveboard's detected timer functions: timerActivate & checkTimer
+# Enhanced Native Timer & Section Lock Bypass Script
 SECTION_TIMER_INJECT_SCRIPT = """<script>
-window.addEventListener('DOMContentLoaded', (event) => {
-    console.log("Banking Aura: Oliveboard Sectional Timer Enforcer Active");
+(function() {
     window.onbeforeunload = null;
+    
+    // Override native addEventListener to block beforeunload popups cleanly
+    const originalAddEventListener = window.addEventListener;
+    window.addEventListener = function(type, listener, options) {
+        if (type === 'beforeunload') return;
+        return originalAddEventListener.call(window, type, listener, options);
+    };
 
-    // Periodically hook into Oliveboard's native timer and section functions
-    setInterval(() => {
-        try {
-            if (typeof window.timerActivate === 'function') {
-                window.timerActivate();
+    window.addEventListener('DOMContentLoaded', () => {
+        console.log("Banking Aura: Native Timer & Section Enforcer Active");
+        
+        // Auto-click start test if loader is hidden to jump straight into the exam
+        setTimeout(() => {
+            const startBtn = document.getElementById('start-test');
+            if (startBtn && startBtn.style.visibility !== 'hidden') {
+                startBtn.click();
             }
-            if (typeof window.checkTimer === 'function') {
-                window.checkTimer();
-            }
-        } catch (e) {
-            // Suppress background sync errors
-        }
-    }, 1000);
-});
+        }, 1000);
+    });
+})();
 </script>
 """
 
