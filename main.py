@@ -3,7 +3,7 @@
 import os
 import requests
 from telethon import TelegramClient, events
-from config import API_ID, API_HASH, BOT_TOKEN, COOKIES, OWNER_ID
+from config import API_ID, API_HASH, BOT_TOKEN, COOKIES
 import re
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -58,8 +58,10 @@ BASE_URIS = {
     "ibpsclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
     "sbipo":     "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
     "sbiclerk":  "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
-    "rrbpo":     "https://u1.oliveboard.in/exams/tests/?c=rrbpo&testid={test_id}",
-    "rrbclerk":  "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&testid={test_id}",
+    "rrbpo":     "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
+    "rrbclerk":  "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
+    "rrbpomain": "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
+    "rrbclerkmain": "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&testid={test_id}",
 }
 
 # ─────────────────────────────────────────────
@@ -68,9 +70,6 @@ BASE_URIS = {
 @bot.on(events.NewMessage(pattern=r"/fetch (\w+) (\d+)"))
 async def fetch_exam(event):
     """Fetches test details based on the exam type and test ID."""
-    if event.sender_id != OWNER_ID:
-        await event.reply("Not allowed")
-        return
     exam = event.pattern_match.group(1).lower()
     test_id = event.pattern_match.group(2)
 
