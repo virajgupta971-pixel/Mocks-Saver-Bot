@@ -252,4 +252,4 @@ print("Bot started...")
 bot.run_until_disconnected()
 
 # Copyright github.com/devgaganin
-# no part of this code/edits is allowed to use for 
+# no part of this code/edits is allowed to use for commercial / sale purposes
