@@ -21,7 +21,7 @@ API_ID = int(os.getenv("API_ID", "1234567"))
 API_HASH = os.getenv("API_HASH", "your_api_hash")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")
 COOKIES = os.getenv("COOKIES", "your_cookies_here")
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Telegram User ID
+OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Aapka Telegram User ID yahan env se aayega
 
 # ─────────────────────────────────────────────
 # Initialize the Telethon client
@@ -35,7 +35,7 @@ async def start(event):
     await event.reply(
         "**Welcome to the Mock Extractor Bot!**\n\n"
         "Send `/fetch exam testid` for oliveboard\n\n"
-        "**__Example: `/fetch rrbposecpre 1`__**\n\n"
+        "**__Example: `/fetch rrbpo 1`__**\n\n"
         "__**Powered by Banking Aura**__"
     )
 
@@ -73,8 +73,7 @@ BASE_URIS = {
     "rrbalp1": "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
     "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
     "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
-    # RRB PO & Clerk (Prelims, Mains, Sectionals & Pre-Sectionals)
-    "rrbposecpre": "https://u1.oliveboard.in/exams/tests/?c=rrbposecpre&testid={test_id}",
+    # RRB PO & Clerk (Prelims & Mains / Sectionals)
     "rrbpo": "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
     "rrbpomain": "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
@@ -208,7 +207,7 @@ def fetch_solution(url):
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers (Robust Dynamic Sectional Timer & Locking Engine)
+# HTML rewriting helpers (Watermarked & Native Timer Support)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
@@ -225,116 +224,15 @@ WATERMARK_HTML = (
     % WATERMARK_TEXT
 )
 
-# Robust Dynamic Engine matching Oliveboard Interface
-EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
+# Only blocks beforeunload popups so native OB timer and section switching work naturally
+EXTRA_INJECT_SCRIPT = """<script>
 (function() {
-    // 1. Block beforeunload popup
     window.onbeforeunload = null;
     const originalAddEventListener = window.addEventListener;
     window.addEventListener = function(type, listener, options) {
         if (type === 'beforeunload') return;
         return originalAddEventListener.call(window, type, listener, options);
     };
-
-    // 2. Exact Sectional Timing & Locking Synchronization
-    window.addEventListener('load', function() {
-        setTimeout(function() {
-            // Pick up exact test parameters or intelligently fallback
-            window.secList = (typeof secList !== 'undefined' && Array.isArray(secList) && secList.length > 0) ? secList : ['Reasoning', 'Quantitative Aptitude'];
-            window.secTracker = (typeof secTracker !== 'undefined' && Array.isArray(secTracker) && secTracker.length > 0) ? secTracker : [35, 35];
-            
-            // Handle secTimes mapping properly
-            if (typeof secTimes !== 'undefined' && Array.isArray(secTimes) && secTimes.length > 0) {
-                window.sectionDurations = secTimes;
-            } else {
-                window.sectionDurations = [1200, 1200];
-            }
-
-            window.currentSecIndex = 0;
-            window.activeSecTimeLeft = window.sectionDurations[window.currentSecIndex] || 1200;
-
-            // Create Sectional Timer UI on Top Header matching the screenshot badge position
-            let timerBox = document.getElementById('banking-aura-sectimer');
-            if (!timerBox) {
-                let box = document.createElement('div');
-                box.id = 'banking-aura-sectimer';
-                box.style.cssText = 'position:fixed; top:8px; right:250px; background:#e74c3c; color:#fff; padding:4px 12px; font-weight:bold; border-radius:4px; z-index:999999; font-size:14px; font-family:Arial;';
-                document.body.appendChild(box);
-                timerBox = box;
-            }
-
-            // Countdown Timer Loop
-            window.secTimerHandle = setInterval(function() {
-                if (window.activeSecTimeLeft > 0) {
-                    window.activeSecTimeLeft--;
-                    let mm = Math.floor(window.activeSecTimeLeft / 60);
-                    let ss = window.activeSecTimeLeft % 60;
-                    timerBox.innerHTML = `Sec Time: ${mm < 10 ? '0'+mm : mm}:${ss < 10 ? '0'+ss : ss}`;
-                } else {
-                    alert("⏱️ Section Time Over! Moving to the next section.");
-                    autoAdvanceSection();
-                }
-            }, 1000);
-
-            function autoAdvanceSection() {
-                if (window.currentSecIndex < window.secList.length - 1) {
-                    window.currentSecIndex++;
-                    window.activeSecTimeLeft = window.sectionDurations[window.currentSecIndex] || 1200;
-                    
-                    // Shift to start question of next section
-                    let qStartCount = 1;
-                    for(let k=0; k<window.currentSecIndex; k++) {
-                        qStartCount += parseInt(window.secTracker[k] || 35);
-                    }
-                    let targetQid = (typeof firstQid !== 'undefined' ? firstQid : 25001) + qStartCount - 1;
-                    if (typeof displayQuestions === 'function') {
-                        displayQuestions(targetQid);
-                    }
-                    applyLockStyles();
-                } else {
-                    alert("Test Time Finished! Submitting test.");
-                    if (typeof finalSubmit === 'function') finalSubmit();
-                }
-            }
-
-            function applyLockStyles() {
-                for(let i=0; i<window.secList.length; i++) {
-                    let tabElem = document.getElementById("sec-e" + i);
-                    if (tabElem) {
-                        if (i > window.currentSecIndex) {
-                            tabElem.style.opacity = "0.3";
-                            tabElem.style.pointerEvents = "none";
-                            tabElem.title = "Locked Section";
-                        } else {
-                            tabElem.style.opacity = "1";
-                            tabElem.style.pointerEvents = "auto";
-                            tabElem.title = "";
-                        }
-                    }
-                }
-            }
-
-            // Intercept manual tab click / shiftSection function
-            window.nativeShiftSection = window.shiftSection;
-            window.shiftSection = function(sid) {
-                if (sid > window.currentSecIndex) {
-                    alert("🔒 Section Locked! Aap pehla section complete kiye bina aage nahi ja sakte.");
-                    return false;
-                }
-                if (window.nativeShiftSection) {
-                    window.nativeShiftSection(sid);
-                }
-            };
-
-            // Intercept Next Section / Submit button (sendData)
-            window.nativeSendData = window.sendData;
-            window.sendData = function() {
-                autoAdvanceSection();
-            };
-
-            applyLockStyles();
-        }, 1200);
-    });
 })();
 </script>
 """
@@ -349,8 +247,6 @@ def finalize_html(soup):
     # Inject script in head if present, else body
     if soup.head:
         soup.head.append(BeautifulSoup(EXTRA_INJECT_SCRIPT, "html.parser"))
-    elif soup.body:
-        soup.body.append(BeautifulSoup(EXTRA_INJECT_SCRIPT, "html.parser"))
         
     if soup.body is not None and not soup.find(id="ba-watermark"):
         soup.body.append(BeautifulSoup(WATERMARK_HTML, "html.parser"))
