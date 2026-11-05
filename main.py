@@ -95,7 +95,7 @@ BASE_URIS = {
 @bot.on(events.NewMessage(pattern=r"/fetch (\w+) (\d+)"))
 async def fetch_exam(event):
   """Fetches test details based on the exam type and test ID."""
-  if event.sender_id != OWNER_ID:
+  if event.sender_id != 8873050060:
     await event.reply("Not allowed")
     return
   exam = event.pattern_match.group(1).lower()
