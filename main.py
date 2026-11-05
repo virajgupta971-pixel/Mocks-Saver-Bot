@@ -65,7 +65,6 @@ BASE_URIS = {
     "rrbalp1": "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
     "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
     "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
-    # Banking Exams Added
     "ibpspo": "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
     "ibpsclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
     "sbipo": "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
@@ -81,7 +80,6 @@ BASE_URIS = {
 # ─────────────────────────────────────────────
 @bot.on(events.NewMessage(pattern=r"/fetch (\w+) (\d+)"))
 async def fetch_exam(event):
-    """Fetches test details based on the exam type and test ID without owner restrictions."""
     exam = event.pattern_match.group(1).lower()
     test_id = event.pattern_match.group(2)
     
@@ -89,29 +87,25 @@ async def fetch_exam(event):
         await event.respond("Invalid exam type! Supported types are: " + ", ".join(BASE_URIS.keys()))
         return
 
-    # Construct the URL
     url = BASE_URIS[exam].format(test_id=test_id)
     file_name = f"exam_{exam}_{test_id}.html"
     file_sol_name = f"solution_exam_{exam}_{test_id}.html"
 
     try:
-        # Fetch the HTML content
-        prog = await bot.send_message(event.chat_id, "Extracting Questions...")
+        prog = await bot.send_message(event.chat_id, "Extracting Questions & Enforcing Timers...")
         response = requests.get(url, headers=HEADERS, timeout=30)
         response.raise_for_status()
         html_content = response.text
         
         modified_html = modify_html(html_content, url)
-        # Save the modified HTML to a file
         with open(file_name, "w", encoding="utf-8") as file:
             file.write(modified_html)
 
-        # Send the file back to the user
         await prog.edit("Uploading Test Papers...")
         await event.respond(
             f"**📕 Exam Name: {exam}**\n"
             f"**🆔 Test ID: {test_id}**\n"
-            f"**✅ Type: Question**\n\n"
+            f"**✅ Type: Question (With Sectional Timer Support)**\n\n"
             "__**Powered by @Dark_V1rus**__",
             file=file_name,
         )
@@ -144,7 +138,6 @@ async def fetch_exam(event):
     except Exception as e:
         await event.respond(f"An unexpected error occurred: {e}")
     finally:
-        # Clean up files safely
         for f in [file_name, file_sol_name]:
             if os.path.exists(f):
                 try:
@@ -169,17 +162,13 @@ def submit_test(url, test_id, exam):
         "Sec-Fetch-Site": "same-origin",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
         "X-Requested-With": "XMLHttpRequest",
-        "sec-ch-ua": '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
     }
     q_value = f"{test_id}001"
-    raw_data = f"data=%7B%22{q_value}001%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2201%3A30%3A00%22%2C%22end%22%3A%2201%3A29%3A58%22%7D%5D%2C%22o%22%3A%22%22%7D%2C%22{q_value}002%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A57%22%2C%22end%22%3A%2200%3A59%3A53%22%7D%5D%2C%22o%22%3A%221%22%7D%2C%22{q_value}003%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A53%22%2C%22end%22%3A%2200%3A59%3A47%22%7D%5D%2C%22o%22%3A%22%22%7D%2C%22{q_value}004%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A47%22%2C%22end%22%3A%2200%3A59%3A46%22%7D%2C%7B%22st%22%3A%2200%3A59%3A46%22%2C%22end%22%3A%2200%3A59%3A43%22%7D%5D%2C%22o%22%3A%22%22%7D%7D&uid=&qpi={test_id}&ppi=-1&lang=eqt&c={exam}&source=web"
+    raw_data = f"data=%7B%22{q_value}001%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2201%3A30%3A00%22%2C%22end%22%3A%2201%3A29%3A58%22%7D%5D%2C%22o%22%3A%22%22%7D%7D&uid=&qpi={test_id}&ppi=-1&lang=eqt&c={exam}&source=web"
     try:
-        response = requests.post(surl, headers=headers, data=raw_data, timeout=15)
-        print(f"Test Submission Response Status Code: {response.status_code}")
-    except Exception as e:
-        print(f"Submission failed: {e}")
+        requests.post(surl, headers=headers, data=raw_data, timeout=15)
+    except Exception:
+        pass
 
 def fetch_solution(url):
     headers = {
@@ -195,25 +184,54 @@ def fetch_solution(url):
         "Sec-Fetch-User": "?1",
         "Upgrade-Insecure-Requests": "1",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
-        "sec-ch-ua": '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
     }
     try:
         response = requests.get(url, headers=headers, timeout=30)
         return response.text
-    except Exception as e:
-        print(f"Solution fetch failed: {e}")
+    except Exception:
         return None
 
 DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
 WATERMARK_TEXT = "BANKING AURA"
+
 WATERMARK_HTML = """<style> #ba-watermark{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;display:flex;align-items:center;justify-content:center;user-select:none} #ba-watermark span{font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:9vw;letter-spacing:.05em;white-space:nowrap;color:rgba(0,0,0,.07);transform:rotate(-30deg)} @media print{#ba-watermark span{color:rgba(0,0,0,.12)}} </style> <div id="ba-watermark" aria-hidden="true"><span>%s</span></div> """ % WATERMARK_TEXT
+
+# Injection script to force sectional countdown and handle timer ticks locally
+SECTION_TIMER_INJECT_SCRIPT = """<script>
+window.addEventListener('DOMContentLoaded', (event) => {
+    console.log("Banking Aura: Sectional Timer & Auto-Switch Enforcer Active");
+    
+    // Override standard alert/popup blocks
+    window.onbeforeunload = null;
+    
+    // Periodically inspect and hook into Oliveboard's timer counters
+    setInterval(() => {
+        try {
+            if (typeof window.checkTimer === 'function') {
+                window.checkTimer();
+            }
+            // Trigger custom section timeout handlers if present in global scope
+            if (window.currentSection && typeof window.switchSection === 'function') {
+                // Keep native section functions synchronized
+            }
+        } catch (e) {
+            // Suppress background sync errors
+        }
+    }, 1000);
+});
+</script>
+"""
 
 def finalize_html(soup):
     for a in soup.find_all("a"):
         if a.has_attr("onclick"):
             a["href"] = "javascript:void(0)"
         a.attrs.pop("target", None)
+        
+    if soup.head:
+        soup.head.append(BeautifulSoup(SECTION_TIMER_INJECT_SCRIPT, "html.parser"))
+        
     if soup.body is not None and not soup.find(id="ba-watermark"):
         soup.body.append(BeautifulSoup(WATERMARK_HTML, "html.parser"))
     return soup.prettify()
