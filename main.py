@@ -3,7 +3,6 @@
 import os
 import requests
 from telethon import TelegramClient, events
-from telethon.tl.types import InputFile
 from config import API_ID, API_HASH, BOT_TOKEN, COOKIES, OWNER_ID
 import re
 from bs4 import BeautifulSoup
