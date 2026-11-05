@@ -1,336 +1,121 @@
-# Copyright github.com/devgaganin
-# no part of this code/edits is allowed to use for commercial / sale purposes
-
-import json
-import logging
-import os
+import sys
+import re
 from bs4 import BeautifulSoup
-from telethon import TelegramClient, events
-from urllib.parse import urljoin
-import requests
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-# ─────────────────────────────────────────────
-# CONFIGURATION (Railway Environment Variables)
-# ─────────────────────────────────────────────
-API_ID = int(os.getenv("API_ID", "1234567"))
-API_HASH = os.getenv("API_HASH", "your_api_hash")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")
-COOKIES = os.getenv("COOKIES", "your_cookies_here")
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Aapka Telegram User ID yahan env se aayega
-
-# ─────────────────────────────────────────────
-# Initialize the Telethon client
-# ─────────────────────────────────────────────
-bot = TelegramClient("olive_bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
-
-
-@bot.on(events.NewMessage(pattern="/start"))
-async def start(event):
-    """Handle /start command"""
-    await event.reply(
-        "**Welcome to the Mock Extractor Bot!**\n\n"
-        "Send `/fetch exam testid` for oliveboard\n\n"
-        "**__Example: `/fetch rrbpo 1`__**\n\n"
-        "__**Powered by Banking Aura**__"
-    )
-
-
-# ─────────────────────────────────────────────
-# OLIVEBOARD — headers
-# ─────────────────────────────────────────────
-HEADERS = {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br, zstd",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Connection": "keep-alive",
-    "Cookie": COOKIES,
-    "Host": "u1.oliveboard.in",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Upgrade-Insecure-Requests": "1",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
-    "sec-ch-ua": '"Not A(Brand";v="8", "Chromium";v="132", "Google Chrome";v="132"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"Windows"',
-}
-
-# Comprehensive Category Slugs
-BASE_URIS = {
-    # SSC & Railway
-    "cgl1": "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
-    "chsl": "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
-    "chsl2": "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
-    "sscmts": "https://u1.oliveboard.in/exams/tests/?c=sscmts&testid={test_id}",
-    "ntpc1": "https://u1.oliveboard.in/exams/tests/?c=ntpc1&os=1&testid={test_id}",
-    "ntpc2": "https://u1.oliveboard.in/exams/tests/?c=ntpc2&os=1&testid={test_id}",
-    "rrbalp1": "https://u1.oliveboard.in/exams/tests/?c=rrbalp1&os=1&testid={test_id}",
-    "rrbalp2": "https://u1.oliveboard.in/exams/tests/?c=rrbalp2&os=1&testid={test_id}",
-    "rrbgrpd": "https://u1.oliveboard.in/exams/tests/?c=rrbgrpd&os=1&testid={test_id}",
-    # RRB PO & Clerk (Prelims & Mains / Sectionals)
-    "rrbpo": "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
-    "rrbclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsrrbscp&testid={test_id}",
-    "rrbpomain": "https://u1.oliveboard.in/exams/tests/?c=rrbpomain&testid={test_id}",
-    "rrbclerkmain": "https://u1.oliveboard.in/exams/tests/?c=rrbclerkmain&testid={test_id}",
-    "rrbposectional": "https://u1.oliveboard.in/exams/tests/?c=rrbposectional&testid={test_id}",
-    "rrbclerksectional": "https://u1.oliveboard.in/exams/tests/?c=rrbclerksectional&testid={test_id}",
-    # IBPS PO & Clerk
-    "ibpspo": "https://u1.oliveboard.in/exams/tests/?c=ibpspo&testid={test_id}",
-    "ibpspomain": "https://u1.oliveboard.in/exams/tests/?c=ibpspomain&testid={test_id}",
-    "ibpsclerk": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&testid={test_id}",
-    "ibpsclerkmain": "https://u1.oliveboard.in/exams/tests/?c=ibpsclerkmain&testid={test_id}",
-    # SBI PO & Clerk
-    "sbipo": "https://u1.oliveboard.in/exams/tests/?c=sbipo&testid={test_id}",
-    "sbipomain": "https://u1.oliveboard.in/exams/tests/?c=sbipomain&testid={test_id}",
-    "sbiclerk": "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
-    "sbiclerkmain": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
-}
-
-
-# ─────────────────────────────────────────────
-# Dynamic HTML Template Generator (Banking Aura)
-# ─────────────────────────────────────────────
-def generate_oliveboard_template(test_qpid, sec_list, sec_tracker, questions_data):
-    """Generates a clean, structured HTML template for Oliveboard test interface
-
-    injecting dynamic test data and custom layout.
+def inject_section_locking_logic(html_content):
     """
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Mock Test Interface - Banking Aura</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f6f9; }}
-        .container {{ max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
-        .header {{ font-size: 22px; font-weight: bold; margin-bottom: 15px; color: #333; }}
-        .section-bar {{ display: flex; gap: 10px; margin-bottom: 20px; }}
-        .sec-btn {{ padding: 8px 15px; background: #e0e0e0; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }}
-        .sec-btn.active {{ background: #007bff; color: white; }}
-        .sec-btn.locked {{ background: #ccc; color: #666; cursor: not-allowed; }}
-        .question-box {{ border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 15px; }}
-        .options-list {{ list-style-type: none; padding: 0; }}
-        .options-list li {{ margin: 8px 0; padding: 8px; background: #f9f9f9; border: 1px solid #eee; border-radius: 3px; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">Banking Aura - Test ID: <span id="qpid">{test_qpid}</span></div>
-        <div class="section-bar" id="secList"></div>
-        <div class="question-box" id="questionContainer"></div>
-    </div>
-    <script>
-        const testQpid = "{test_qpid}";
-        const secList = {json.dumps(sec_list)};
-        const secTracker = {json.dumps(sec_tracker)};
-        const questionsData = {json.dumps(questions_data)};
-    </script>
-</body>
-</html>
-"""
+    Oliveboard HTML Interface me Section Locking aur Sequential Navigation
+    ko enforce karne ke liye JavaScript logic inject karta hai.
+    """
+    locking_script = """
+    <!-- Custom Section Locking & Sequential Progression Script -->
+    <script type="text/javascript">
+    (function() {
+        // Track the index of the highest unlocked section (0 = First Section)
+        window.currentUnlockedSection = 0;
 
-
-# ─────────────────────────────────────────────
-# /fetch handler
-# ─────────────────────────────────────────────
-@bot.on(events.NewMessage(pattern=r"/fetch (\w+) (\d+)"))
-async def fetch_exam(event):
-    # Owner restriction check
-    if OWNER_ID and event.sender_id != OWNER_ID:
-        await event.reply("Not allowed")
-        return
-
-    exam = event.pattern_match.group(1).lower()
-    test_id = event.pattern_match.group(2)
-
-    if exam not in BASE_URIS:
-        await event.respond(
-            "Invalid exam type! Supported types are:\n" + ", ".join(BASE_URIS.keys())
-        )
-        return
-
-    url = BASE_URIS[exam].format(test_id=test_id)
-
-    file_name = f"exam_{exam}_{test_id}.html"
-    file_sol_name = f"solution_exam_{exam}_{test_id}.html"
-
-    try:
-        prog = await bot.send_message(event.chat_id, "Fetching Question Paper…")
-
-        # ── 1. Download Question Paper ──
-        response = requests.get(url, headers=HEADERS, timeout=30)
-        response.raise_for_status()
-
-        if len(response.text) < 500 or "login" in response.text.lower()[:1000]:
-            await prog.edit(
-                f"⚠️ Received blank or login page for exam `{exam}` with Test ID `{test_id}`.\n"
-                "Possible reasons:\n"
-                "1. Invalid Test ID for this specific exam category.\n"
-                "2. Expired or invalid COOKIES.\n"
-                "3. Test requires active purchase/subscription on your account."
-            )
-            return
-
-        modified_html = modify_html(response.text, url)
-        with open(file_name, "w", encoding="utf-8") as file:
-            file.write(modified_html)
-
-        await prog.edit("Uploading Test Papers…")
-        await event.respond(
-            f"**📕 Exam Name: {exam}**\n"
-            f"**🆔 Test ID: {test_id}**\n"
-            f"**🥹 Type: Question**\n\n"
-            "__**Powered by Banking Aura**__",
-            file=file_name,
-        )
-
-        # ── 2. Fetch Solution ────────────────────────────
-        sol_url = url.replace(
-            "https://u1.oliveboard.in/exams/tests/",
-            "https://u1.oliveboard.in/exams/solution/index3.php",
-        )
-        print("Solution URL:", sol_url)
-
-        await prog.edit("Trying to fetch the solution…")
-        sol_html = fetch_solution(sol_url)
-
-        if not sol_html or len(sol_html) < 500 or (
-            "login" in sol_html.lower()[:2000] and "solution" not in sol_html.lower()
-        ):
-            await prog.edit(
-                "⚠️ Could not fetch solution (page is blank or returned login screen)."
-            )
-            return
-
-        mod_html = mody_html(sol_html, sol_url)
-        with open(file_sol_name, "w", encoding="utf-8") as file:
-            file.write(mod_html)
-
-        await prog.edit("Uploading Solution…")
-        await event.respond(
-            f"**📕 Exam Name: {exam}**\n"
-            f"**🆔 Test ID: {test_id}**\n"
-            f"**🥹 Type: Solution**\n\n"
-            "__**Powered by Banking Aura**__",
-            file=file_sol_name,
-        )
-        await prog.delete()
-
-    except requests.exceptions.RequestException as e:
-        await event.respond(f"Network error while fetching test details: {e}")
-    except Exception as e:
-        await event.respond(f"Unexpected error: {e}")
-    finally:
-        for f in (file_name, file_sol_name):
-            try:
-                if os.path.exists(f):
-                    os.remove(f)
-            except OSError:
-                pass
-
-
-# ─────────────────────────────────────────────
-# Fetch solution page
-# ─────────────────────────────────────────────
-def fetch_solution(url):
-    headers = dict(HEADERS)
-    try:
-        response = requests.get(url, headers=headers, timeout=30)
-        print("Solution fetch status:", response.status_code)
-        return response.text
-    except requests.exceptions.RequestException as e:
-        print("Solution fetch failed:", e)
-        return None
-
-
-# ─────────────────────────────────────────────
-# HTML rewriting helpers (Watermarked, No-Unload & Section Lock Fix)
-# ─────────────────────────────────────────────
-DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
-SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
-
-WATERMARK_TEXT = "Banking Aura"
-WATERMARK_HTML = (
-    """<style>
-#ba-watermark{position:fixed;inset:0;z-index:2147483000;pointer-events:none;overflow:hidden;display:flex;align-items:center;justify-content:center;user-select:none}
-#ba-watermark span{font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:9vw;letter-spacing:.05em;white-space:nowrap;color:rgba(0,0,0,.07);transform:rotate(-30deg)}
-@media print{#ba-watermark span{color:rgba(0,0,0,.12)}}
-</style>
-<div id="ba-watermark" aria-hidden="true"><span>%s</span></div>
-"""
-    % WATERMARK_TEXT
-)
-
-# Yeh script 'Leave site?' pop-up block karegi aur Oliveboard ke section-lock / navigation elements ko enforce karegi
-EXTRA_INJECT_SCRIPT = """<script>
-(function() {
-    // 1. Block beforeunload popup
-    window.onbeforeunload = null;
-    const originalAddEventListener = window.addEventListener;
-    window.addEventListener = function(type, listener, options) {
-        if (type === 'beforeunload') return;
-        return originalAddEventListener.call(window, type, listener, options);
-    };
-
-    // 2. Enforce Section Locking / Handling logic if native elements exist
-    document.addEventListener("DOMContentLoaded", () => {
-        const checkSectionLocks = setInterval(() => {
-            // Find standard section tabs/buttons in Oliveboard layout
-            const sectionTabs = document.querySelectorAll('.section-tab, .sec-btn, [id*="section"]');
-            if (sectionTabs.length > 0) {
-                sectionTabs.forEach(tab => {
-                    if (tab.classList.contains('locked') || tab.getAttribute('disabled') !== null) {
-                        tab.style.pointerEvents = 'none';
-                        tab.style.opacity = '0.6';
-                    }
-                });
-            }
-        }, 1000);
-    });
-})();
-</script>
-"""
-
-
-def finalize_html(soup):
-    for a in soup.find_all("a"):
-        if a.has_attr("onclick"):
-            a["href"] = "javascript:void(0)"
-            a.attrs.pop("target", None)
+        // Wait until DOM is completely loaded
+        document.addEventListener("DOMContentLoaded", function() {
             
-    # Inject script in head if present, else body
-    if soup.head:
-        soup.head.append(BeautifulSoup(EXTRA_INJECT_SCRIPT, "html.parser"))
+            // 1. Override shiftSection to block unauthorized navigation
+            if (typeof window.shiftSection === 'function') {
+                var originalShiftSection = window.shiftSection;
+                window.shiftSection = function(sid) {
+                    // Check if user is trying to jump to a locked section
+                    if (sid > window.currentUnlockedSection) {
+                        alert("🔒 Section Locked! Aapko pehle current section complete karna hoga.");
+                        return false;
+                    }
+                    // Call original shiftSection if section is unlocked
+                    return originalShiftSection.apply(this, arguments);
+                };
+            }
+
+            // 2. Override sendData / Section Submit to unlock the next section
+            if (typeof window.sendData === 'function') {
+                var originalSendData = window.sendData;
+                window.sendData = function() {
+                    // Unlock next section index if available
+                    if (typeof secList !== 'undefined' && Array.isArray(secList)) {
+                        if (window.currentUnlockedSection < secList.length - 1) {
+                            window.currentUnlockedSection++;
+                            console.log("Next section unlocked. Current unlocked index: " + window.currentUnlockedSection);
+                        }
+                    } else {
+                        window.currentUnlockedSection++;
+                    }
+
+                    // Execute original sendData / submit execution
+                    return originalSendData.apply(this, arguments);
+                };
+            }
+
+            // 3. Optional: Visual indicator update for locked section tabs
+            function updateSectionTabStyles() {
+                if (typeof secList !== 'undefined' && Array.isArray(secList)) {
+                    secList.forEach(function(sec, index) {
+                        var tabElem = document.getElementById("sec_tab_" + index) || document.getElementById("section_" + index);
+                        if (tabElem) {
+                            if (index > window.currentUnlockedSection) {
+                                tabElem.style.opacity = "0.5";
+                                tabElem.style.cursor = "not-allowed";
+                                tabElem.title = "Section Locked";
+                            } else {
+                                tabElem.style.opacity = "1";
+                                tabElem.style.cursor = "pointer";
+                                tabElem.title = "";
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Run visual update periodically or on click
+            setInterval(updateSectionTabStyles, 1000);
+        });
+    })();
+    </script>
+    """
+
+    # HTML ke </body> tag ke theek pehle script inject karein
+    if "</body>" in html_content:
+        modified_html = html_content.replace("</body>", f"{locking_script}\n</body>")
+    else:
+        modified_html = html_content + locking_script
+
+    return modified_html
+
+
+def process_html_file(input_path, output_path):
+    """
+    Input HTML file ko read karta hai, logic inject karta hai, aur output file save karta hai.
+    """
+    try:
+        with open(input_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+
+        print(f"[+] Processing file: {input_path}")
         
-    if soup.body is not None and not soup.find(id="ba-watermark"):
-        soup.body.append(BeautifulSoup(WATERMARK_HTML, "html.parser"))
-    return soup.prettify()
+        # Inject the custom lock logic
+        updated_html = inject_section_locking_logic(html_content)
+
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(updated_html)
+
+        print(f"[✓] File successfully updated and saved to: {output_path}")
+
+    except Exception as e:
+        print(f"[X] Error processing file: {str(e)}")
 
 
-def _rewrite_links(html, base_url):
-    soup = BeautifulSoup(html, "html.parser")
-    for tag in soup.find_all(["a", "img", "link", "script"]):
-        if tag.has_attr("href") and not tag["href"].startswith("http"):
-            tag["href"] = urljoin(base_url, tag["href"])
-        if tag.has_attr("src") and not tag["src"].startswith("http"):
-            tag["src"] = urljoin(base_url, tag["src"])
-    return finalize_html(soup)
+if __name__ == "__main__":
+    # Standard Usage: python main.py <input_file.html> <output_file.html>
+    if len(sys.argv) >= 3:
+        input_file = sys.argv[1]
+        output_file = sys.argv[2]
+    else:
+        # Default fallback names agar terminal arguments na diye jayein
+        input_file = "test_interface.html"
+        output_file = "test_interface_locked.html"
 
-
-def modify_html(html, full_url):
-    return _rewrite_links(html, DEFAULT_BASE_URL)
-
-
-def mody_html(html, full_url):
-    return _rewrite_links(html, SOLUTION_BASE_URL)
-
-
-# ─────────────────────────────────────────────
-print("Test Bot started…")
-bot.run_until_disconnected()
+    process_html_file(input_file, output_file)
