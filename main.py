@@ -21,7 +21,7 @@ API_ID = int(os.getenv("API_ID", "1234567"))
 API_HASH = os.getenv("API_HASH", "your_api_hash")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")
 COOKIES = os.getenv("COOKIES", "your_cookies_here")
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Aapka Telegram User ID yahan env se aayega
+OWNER_ID = int(os.getenv("OWNER_ID", "0"))  # Telegram User ID
 
 # ─────────────────────────────────────────────
 # Initialize the Telethon client
@@ -91,49 +91,6 @@ BASE_URIS = {
     "sbiclerk": "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&testid={test_id}",
     "sbiclerkmain": "https://u1.oliveboard.in/exams/tests/?c=sbiclerkmain&testid={test_id}",
 }
-
-
-# ─────────────────────────────────────────────
-# Dynamic HTML Template Generator (Banking Aura)
-# ─────────────────────────────────────────────
-def generate_oliveboard_template(test_qpid, sec_list, sec_tracker, questions_data):
-    """Generates a clean, structured HTML template for Oliveboard test interface
-
-    injecting dynamic test data and custom layout.
-    """
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Mock Test Interface - Banking Aura</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f6f9; }}
-        .container {{ max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
-        .header {{ font-size: 22px; font-weight: bold; margin-bottom: 15px; color: #333; }}
-        .section-bar {{ display: flex; gap: 10px; margin-bottom: 20px; }}
-        .sec-btn {{ padding: 8px 15px; background: #e0e0e0; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }}
-        .sec-btn.active {{ background: #007bff; color: white; }}
-        .sec-btn.locked {{ background: #ccc; color: #666; cursor: not-allowed; }}
-        .question-box {{ border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 15px; }}
-        .options-list {{ list-style-type: none; padding: 0; }}
-        .options-list li {{ margin: 8px 0; padding: 8px; background: #f9f9f9; border: 1px solid #eee; border-radius: 3px; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">Banking Aura - Test ID: <span id="qpid">{test_qpid}</span></div>
-        <div class="section-bar" id="secList"></div>
-        <div class="question-box" id="questionContainer"></div>
-    </div>
-    <script>
-        const testQpid = "{test_qpid}";
-        const secList = {json.dumps(sec_list)};
-        const secTracker = {json.dumps(sec_tracker)};
-        const questionsData = {json.dumps(questions_data)};
-    </script>
-</body>
-</html>
-"""
 
 
 # ─────────────────────────────────────────────
@@ -250,7 +207,7 @@ def fetch_solution(url):
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers (Watermarked, No-Unload & Section Lock Fix)
+# HTML rewriting helpers (Watermarked & Section Lock Injected)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
@@ -267,10 +224,10 @@ WATERMARK_HTML = (
     % WATERMARK_TEXT
 )
 
-# Yeh script 'Leave site?' pop-up block karegi aur Oliveboard ke section-lock / navigation elements ko enforce karegi
-EXTRA_INJECT_SCRIPT = """<script>
+# Strictly Section Locking & Sequential Progression Script
+EXTRA_INJECT_SCRIPT = """<script type="text/javascript">
 (function() {
-    // 1. Block beforeunload popup
+    // 1. Block 'Leave site?' popup
     window.onbeforeunload = null;
     const originalAddEventListener = window.addEventListener;
     window.addEventListener = function(type, listener, options) {
@@ -278,20 +235,59 @@ EXTRA_INJECT_SCRIPT = """<script>
         return originalAddEventListener.call(window, type, listener, options);
     };
 
-    // 2. Enforce Section Locking / Handling logic if native elements exist
-    document.addEventListener("DOMContentLoaded", () => {
-        const checkSectionLocks = setInterval(() => {
-            // Find standard section tabs/buttons in Oliveboard layout
-            const sectionTabs = document.querySelectorAll('.section-tab, .sec-btn, [id*="section"]');
-            if (sectionTabs.length > 0) {
-                sectionTabs.forEach(tab => {
-                    if (tab.classList.contains('locked') || tab.getAttribute('disabled') !== null) {
-                        tab.style.pointerEvents = 'none';
-                        tab.style.opacity = '0.6';
+    // 2. Section Locking Engine
+    window.currentUnlockedSection = 0;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // Override shiftSection to restrict navigation to locked sections
+        if (typeof window.shiftSection === 'function') {
+            var originalShiftSection = window.shiftSection;
+            window.shiftSection = function(sid) {
+                if (sid > window.currentUnlockedSection) {
+                    alert("🔒 Section Locked! Pehle current section complete karein.");
+                    return false;
+                }
+                return originalShiftSection.apply(this, arguments);
+            };
+        }
+
+        // Override sendData / Section Submit to unlock the next section
+        if (typeof window.sendData === 'function') {
+            var originalSendData = window.sendData;
+            window.sendData = function() {
+                if (typeof secList !== 'undefined' && Array.isArray(secList)) {
+                    if (window.currentUnlockedSection < secList.length - 1) {
+                        window.currentUnlockedSection++;
+                    }
+                } else {
+                    window.currentUnlockedSection++;
+                }
+                return originalSendData.apply(this, arguments);
+            };
+        }
+
+        # 3. Dynamic UI Update for Locked Section Tabs
+        setInterval(function() {
+            if (typeof secList !== 'undefined' && Array.isArray(secList)) {
+                secList.forEach(function(sec, index) {
+                    var tabElem = document.getElementById("sec_tab_" + index) || 
+                                  document.getElementById("section_" + index) ||
+                                  document.querySelector('[data-secid="' + index + '"]');
+                    if (tabElem) {
+                        if (index > window.currentUnlockedSection) {
+                            tabElem.style.opacity = "0.4";
+                            tabElem.style.pointerEvents = "none";
+                            tabElem.title = "🔒 Section Locked";
+                        } else {
+                            tabElem.style.opacity = "1";
+                            tabElem.style.pointerEvents = "auto";
+                            tabElem.title = "";
+                        }
                     }
                 });
             }
-        }, 1000);
+        }, 800);
     });
 })();
 </script>
@@ -307,6 +303,8 @@ def finalize_html(soup):
     # Inject script in head if present, else body
     if soup.head:
         soup.head.append(BeautifulSoup(EXTRA_INJECT_SCRIPT, "html.parser"))
+    elif soup.body:
+        soup.body.append(BeautifulSoup(EXTRA_INJECT_SCRIPT, "html.parser"))
         
     if soup.body is not None and not soup.find(id="ba-watermark"):
         soup.body.append(BeautifulSoup(WATERMARK_HTML, "html.parser"))
