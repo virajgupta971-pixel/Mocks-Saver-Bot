@@ -113,6 +113,7 @@ def generate_oliveboard_template(test_qpid, sec_list, sec_tracker, questions_dat
         .section-bar {{ display: flex; gap: 10px; margin-bottom: 20px; }}
         .sec-btn {{ padding: 8px 15px; background: #e0e0e0; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }}
         .sec-btn.active {{ background: #007bff; color: white; }}
+        .sec-btn.locked {{ background: #ccc; color: #666; cursor: not-allowed; }}
         .question-box {{ border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 15px; }}
         .options-list {{ list-style-type: none; padding: 0; }}
         .options-list li {{ margin: 8px 0; padding: 8px; background: #f9f9f9; border: 1px solid #eee; border-radius: 3px; }}
@@ -249,7 +250,7 @@ def fetch_solution(url):
 
 
 # ─────────────────────────────────────────────
-# HTML rewriting helpers (Watermarked & No-Unload)
+# HTML rewriting helpers (Watermarked, No-Unload & Section Lock Fix)
 # ─────────────────────────────────────────────
 DEFAULT_BASE_URL = "https://u1.oliveboard.in/exams/tests/"
 SOLUTION_BASE_URL = "https://u1.oliveboard.in/exams/solution/"
@@ -266,15 +267,32 @@ WATERMARK_HTML = (
     % WATERMARK_TEXT
 )
 
-# Yeh script 'Leave site?' wale pop-up ko block kar degi
-NO_UNLOAD_SCRIPT = """<script>
+# Yeh script 'Leave site?' pop-up block karegi aur Oliveboard ke section-lock / navigation elements ko enforce karegi
+EXTRA_INJECT_SCRIPT = """<script>
 (function() {
+    // 1. Block beforeunload popup
     window.onbeforeunload = null;
     const originalAddEventListener = window.addEventListener;
     window.addEventListener = function(type, listener, options) {
         if (type === 'beforeunload') return;
         return originalAddEventListener.call(window, type, listener, options);
     };
+
+    // 2. Enforce Section Locking / Handling logic if native elements exist
+    document.addEventListener("DOMContentLoaded", () => {
+        const checkSectionLocks = setInterval(() => {
+            // Find standard section tabs/buttons in Oliveboard layout
+            const sectionTabs = document.querySelectorAll('.section-tab, .sec-btn, [id*="section"]');
+            if (sectionTabs.length > 0) {
+                sectionTabs.forEach(tab => {
+                    if (tab.classList.contains('locked') || tab.getAttribute('disabled') !== null) {
+                        tab.style.pointerEvents = 'none';
+                        tab.style.opacity = '0.6';
+                    }
+                });
+            }
+        }, 1000);
+    });
 })();
 </script>
 """
@@ -286,9 +304,9 @@ def finalize_html(soup):
             a["href"] = "javascript:void(0)"
             a.attrs.pop("target", None)
             
-    # Inject no-unload script in head if present, else body
+    # Inject script in head if present, else body
     if soup.head:
-        soup.head.append(BeautifulSoup(NO_UNLOAD_SCRIPT, "html.parser"))
+        soup.head.append(BeautifulSoup(EXTRA_INJECT_SCRIPT, "html.parser"))
         
     if soup.body is not None and not soup.find(id="ba-watermark"):
         soup.body.append(BeautifulSoup(WATERMARK_HTML, "html.parser"))
