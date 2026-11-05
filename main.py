@@ -19,7 +19,7 @@ async def start(event):
   await event.reply(
       "**Welcome to the Mock Extractor Bot!**\n\n"
       "Send `/fetch exam testid` for oliveboard\n\n"
-      "**__Example: `/fetch rrbpo 1`__**\n\n"
+      "**__Example: `/fetch ntpc1 1`__**\n\n"
       "__**Powered by Banking Aura**__"
   )
 
@@ -52,28 +52,8 @@ HEADERS = {
     "sec-ch-ua-platform": '"Windows"',
 }
 
-# Base URIs for different exam types (Banking + SSC + Railways)
+# Base URIs for different exam types
 BASE_URIS = {
-    # Banking Exams
-    "rrbpo": (
-        "https://u1.oliveboard.in/exams/tests/?c=rrbpo&os=1&testid={test_id}"
-    ),
-    "rrbclerk": (
-        "https://u1.oliveboard.in/exams/tests/?c=rrbclerk&os=1&testid={test_id}"
-    ),
-    "ibpspo": (
-        "https://u1.oliveboard.in/exams/tests/?c=ibpspo&os=1&testid={test_id}"
-    ),
-    "ibpsclerk": (
-        "https://u1.oliveboard.in/exams/tests/?c=ibpsclerk&os=1&testid={test_id}"
-    ),
-    "sbipo": (
-        "https://u1.oliveboard.in/exams/tests/?c=sbipo&os=1&testid={test_id}"
-    ),
-    "sbiclerk": (
-        "https://u1.oliveboard.in/exams/tests/?c=sbiclerk&os=1&testid={test_id}"
-    ),
-    # SSC & Railway Exams
     "cgl1": "https://u1.oliveboard.in/exams/tests/?c=ssc2019&testid={test_id}",
     "chsl": "https://u1.oliveboard.in/exams/tests/?c=chsl&testid={test_id}",
     "chsl2": "https://u1.oliveboard.in/exams/tests/?c=chsl2&testid={test_id}",
@@ -126,7 +106,7 @@ async def fetch_exam(event):
 
     prog = await bot.send_message(event.chat_id, "Extracting Questions")
 
-    # Send the Question file back to the user
+    # Send the file back to the user
     await prog.edit("Uploading Test Papers... ")
     await event.respond(
         f"**📕 Exam Name: {exam}**\n**🆔 Test ID:"
@@ -136,9 +116,9 @@ async def fetch_exam(event):
     )
 
     await prog.edit("Auto Submitting the test")
-    submit_test(url, test_id, exam)  # Bypasses section lock / auto submits
+    submit_test(url, test_id, exam)  # Fixed parameters passed here
 
-    await prog.edit("Test Submitted Successfully... ")
+    await prog.edit("Test Submitted Sucessfully... ")
     t = url.replace(
         "https://u1.oliveboard.in/exams/tests/",
         "https://u1.oliveboard.in/exams/solution/index3.php",
@@ -152,7 +132,6 @@ async def fetch_exam(event):
     with open(file_sol_name, "w", encoding="utf-8") as file:
       file.write(mod_html)
 
-    # Send the Solution file back to the user
     await prog.edit("Uploading Solution... ")
     await event.respond(
         f"**📕 Exam Name: {exam}**\n**🆔 Test ID:"
@@ -162,9 +141,7 @@ async def fetch_exam(event):
     )
     await prog.delete()
 
-    # Cleanup temporary local files
-    if os.path.exists(file_name):
-      os.remove(file_name)
+    os.remove(file_name)
     if file_sol_name and os.path.exists(file_sol_name):
       os.remove(file_sol_name)
 
@@ -199,6 +176,7 @@ def submit_test(url, test_id, exam):
   q_value = f"{test_id}001"
   raw_data = f"data=%7B%22{q_value}001%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2201%3A30%3A00%22%2C%22end%22%3A%2201%3A29%3A58%22%7D%5D%2C%22o%22%3A%22%22%7D%2C%22{q_value}002%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A57%22%2C%22end%22%3A%2200%3A59%3A53%22%7D%5D%2C%22o%22%3A%221%22%7D%2C%22{q_value}003%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A53%22%2C%22end%22%3A%2200%3A59%3A47%22%7D%5D%2C%22o%22%3A%22%22%7D%2C%22{q_value}004%22%3A%7B%22q%22%3A%22{q_value}%22%2C%22t%22%3A%5B%7B%22st%22%3A%2200%3A59%3A47%22%2C%22end%22%3A%2200%3A59%3A46%22%7D%2C%7B%22st%22%3A%2200%3A59%3A46%22%2C%22end%22%3A%2200%3A59%3A43%22%7D%5D%2C%22o%22%3A%22%22%7D%7D&uid=&qpi={test_id}&ppi=-1&lang=eqt&c={exam}&source=web"
 
+  # Fixed payload printing issue
   print(f"Submitting test payload for exam: {exam}, test_id: {test_id}")
   response = requests.post(surl, headers=headers, data=raw_data)
   print(f"Test Submission Response Status Code: {response.status_code}")
@@ -300,5 +278,4 @@ def mody_html(html, full_url):
 # Run the bot
 print("Bot started...")
 bot.run_until_disconnected()
-
-# Copyright github.com/devgaganin
+Tum kr do sab
